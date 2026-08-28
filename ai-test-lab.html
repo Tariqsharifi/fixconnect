@@ -196,13 +196,33 @@ let lastFullResponse = "";
 document.getElementById('imgInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  imageMimeType = file.type;
   const reader = new FileReader();
   reader.onload = () => {
-    imageBase64 = reader.result.split(',')[1];
-    document.getElementById('imgPreview').src = reader.result;
-    document.getElementById('imgPreview').style.display = 'block';
-    document.getElementById('removeImgBtn').style.display = 'inline-block';
+    const img = new Image();
+    img.onload = () => {
+      const MAX_DIM = 1024;
+      let { width, height } = img;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width > height) {
+          height = Math.round(height * (MAX_DIM / width));
+          width = MAX_DIM;
+        } else {
+          width = Math.round(width * (MAX_DIM / height));
+          height = MAX_DIM;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      imageMimeType = 'image/jpeg';
+      imageBase64 = compressedDataUrl.split(',')[1];
+      document.getElementById('imgPreview').src = compressedDataUrl;
+      document.getElementById('imgPreview').style.display = 'block';
+      document.getElementById('removeImgBtn').style.display = 'inline-block';
+    };
+    img.src = reader.result;
   };
   reader.readAsDataURL(file);
 });
