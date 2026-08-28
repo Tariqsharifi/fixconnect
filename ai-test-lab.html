@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>آزمایشگاه AI - تست ۲</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Tahoma, sans-serif;
+    background: #f5f3f0;
+    margin: 0;
+    padding: 16px;
+    color: #2a2a2a;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: #777; font-size: 13px; margin-bottom: 20px; }
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .card h2 { font-size: 15px; margin: 0 0 10px; }
+  textarea {
+    width: 100%;
+    min-height: 80px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    resize: vertical;
+  }
+  input[type=file] { display: none; }
+  .btn {
+    display: inline-block;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 6px;
+    margin-top: 6px;
+  }
+  .btn-plum { background: #6b3f4d; color: #fff; }
+  .btn-outline { background: #fff; border: 1px solid #ccc; color: #333; }
+  .btn-danger { background: #b23a3a; color: #fff; }
+  .btn-main {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    font-size: 17px;
+    border-radius: 12px;
+    background: #6b3f4d;
+    color: #fff;
+    border: none;
+    font-weight: 700;
+    margin: 10px 0 4px;
+  }
+  .btn-main:disabled { background: #b8a3aa; }
+  img.preview { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; }
+  audio { width: 100%; margin-top: 10px; }
+  .status-box {
+    text-align: center;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    margin-bottom: 14px;
+    background: #eee;
+  }
+  .status-error { background: #fbe4e4; color: #a12727; }
+  .status-ok { background: #e5f3e5; color: #256b25; }
+  .result-row { margin-bottom: 12px; }
+  .result-row .label { font-size: 13px; color: #888; margin-bottom: 3px; }
+  .result-row .value { font-size: 15px; }
+  .warning-box {
+    background: #fff3cd;
+    border: 1px solid #e0c56d;
+    color: #6b5300;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  .inputs-sent {
+    font-size: 12px;
+    color: #666;
+    background: #f0eeeb;
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-top: 8px;
+  }
+  .full-response {
+    white-space: pre-wrap;
+    font-size: 14px;
+    background: #f8f7f5;
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .rec-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #b23a3a;
+    margin-left: 6px;
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+</style>
+</head>
+<body>
+
+<h1>🧪 آزمایشگاه AI — تست ۲</h1>
+<div class="sub">عکس + صدا + متن → تحلیل با Claude → پاسخ متنی و صوتی</div>
+
+<!-- ⚠️ CONFIG: مقادیر زیر را با اطلاعات پروژه Supabase خودتان جایگزین کنید -->
+<script>
+  const SUPABASE_FUNCTION_URL = "https://YOUR-PROJECT-REF.supabase.co/functions/v1/ai-test-lab-analyze";
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+</script>
+
+<div class="card">
+  <h2>💬 متن</h2>
+  <textarea id="textInput" placeholder="مشکل را توضیح دهید، مثلاً: یخچال من صدای تق‌تق می‌دهد و خوب سرد نمی‌کند."></textarea>
+</div>
+
+<div class="card">
+  <h2>📷 عکس</h2>
+  <button class="btn btn-outline" onclick="document.getElementById('imgInput').click()">افزودن عکس (دوربین یا گالری)</button>
+  <input type="file" id="imgInput" accept="image/*">
+  <img id="imgPreview" class="preview" style="display:none">
+  <button class="btn btn-danger" id="removeImgBtn" style="display:none" onclick="removeImage()">حذف عکس</button>
+</div>
+
+<div class="card">
+  <h2>🎤 صدا</h2>
+  <button class="btn btn-plum" id="recBtn" onclick="toggleRecording()">🎙️ ضبط توضیح</button>
+  <span id="recIndicator" style="display:none"><span class="rec-dot"></span>در حال ضبط...</span>
+  <audio id="audioPlayback" controls style="display:none"></audio>
+  <button class="btn btn-danger" id="removeAudioBtn" style="display:none" onclick="removeAudio()">حذف صدا</button>
+</div>
+
+<button class="btn-main" id="analyzeBtn" onclick="runAnalysis()">🔍 تحلیل با Claude</button>
+
+<div id="statusBox" class="status-box" style="display:none"></div>
+
+<div id="resultCard" class="card" style="display:none">
+  <h2>نتیجه AI</h2>
+
+  <div class="result-row">
+    <div class="label">🔎 وسیله شناسایی‌شده</div>
+    <div class="value" id="rDevice">—</div>
+  </div>
+  <div class="result-row">
+    <div class="label">🏷️ برند / مدل</div>
+    <div class="value" id="rBrand">—</div>
+  </div>
+  <div class="result-row">
+    <div class="label">⚠️ مشکل احتمالی</div>
+    <div class="value" id="rIssue">—</div>
+  </div>
+  <div class="result-row">
+    <div class="label">📊 میزان اطمینان</div>
+    <div class="value" id="rConfidence">—</div>
+  </div>
+  <div class="result-row">
+    <div class="label">🛠️ پیشنهاد بررسی</div>
+    <div class="value" id="rSuggestions">—</div>
+  </div>
+
+  <div id="rSafetyRow" class="result-row" style="display:none">
+    <div class="label">🚨 هشدار ایمنی</div>
+    <div class="warning-box" id="rSafety"></div>
+  </div>
+
+  <div class="result-row">
+    <div class="label">💬 پاسخ کامل AI</div>
+    <div class="full-response" id="rFull">—</div>
+  </div>
+
+  <div class="inputs-sent" id="inputsSentBox"></div>
+
+  <button class="btn btn-plum" id="speakBtn" onclick="speakResult()">🔊 پاسخ را بخوان</button>
+  <button class="btn btn-outline" id="stopSpeakBtn" onclick="stopSpeaking()" style="display:none">⏹️ توقف صدا</button>
+</div>
+
+<script>
+let imageBase64 = null, imageMimeType = null;
+let audioBase64 = null, audioMimeType = null;
+let mediaRecorder = null, audioChunks = [];
+let lastFullResponse = "";
+
+// ---------- عکس ----------
+document.getElementById('imgInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  imageMimeType = file.type;
+  const reader = new FileReader();
+  reader.onload = () => {
+    imageBase64 = reader.result.split(',')[1];
+    document.getElementById('imgPreview').src = reader.result;
+    document.getElementById('imgPreview').style.display = 'block';
+    document.getElementById('removeImgBtn').style.display = 'inline-block';
+  };
+  reader.readAsDataURL(file);
+});
+function removeImage() {
+  imageBase64 = null; imageMimeType = null;
+  document.getElementById('imgPreview').style.display = 'none';
+  document.getElementById('removeImgBtn').style.display = 'none';
+  document.getElementById('imgInput').value = '';
+}
+
+// ---------- صدا ----------
+async function toggleRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let mimeType = 'audio/mp4';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
+    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/mp4' });
+      audioMimeType = blob.type;
+      const reader = new FileReader();
+      reader.onload = () => {
+        audioBase64 = reader.result.split(',')[1];
+      };
+      reader.readAsDataURL(blob);
+      const url = URL.createObjectURL(blob);
+      const player = document.getElementById('audioPlayback');
+      player.src = url;
+      player.style.display = 'block';
+      document.getElementById('removeAudioBtn').style.display = 'inline-block';
+      stream.getTracks().forEach(t => t.stop());
+      document.getElementById('recIndicator').style.display = 'none';
+      document.getElementById('recBtn').textContent = '🎙️ ضبط توضیح';
+    };
+    mediaRecorder.start();
+    document.getElementById('recIndicator').style.display = 'inline-block';
+    document.getElementById('recBtn').textContent = '⏹️ توقف ضبط';
+  } catch (err) {
+    alert('دسترسی به میکروفون ممکن نشد: ' + err.message);
+  }
+}
+function removeAudio() {
+  audioBase64 = null; audioMimeType = null;
+  document.getElementById('audioPlayback').style.display = 'none';
+  document.getElementById('removeAudioBtn').style.display = 'none';
+}
+
+// ---------- تحلیل ----------
+function setStatus(text, kind) {
+  const box = document.getElementById('statusBox');
+  box.style.display = 'block';
+  box.textContent = text;
+  box.className = 'status-box' + (kind ? ' status-' + kind : '');
+}
+
+async function runAnalysis() {
+  const text = document.getElementById('textInput').value.trim();
+  if (!text && !imageBase64 && !audioBase64) {
+    alert('حداقل یکی از متن، عکس یا صدا را وارد کنید.');
+    return;
+  }
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('resultCard').style.display = 'none';
+  setStatus('⏳ در حال ارسال...', '');
+
+  const payload = {
+    text: text || null,
+    imageBase64: imageBase64 || null,
+    imageMimeType: imageMimeType || null,
+    audioBase64: audioBase64 || null,
+    audioMimeType: audioMimeType || null
+  };
+
+  try {
+    setStatus('⏳ در حال پردازش (تبدیل صدا در صورت وجود)...', '');
+    const resp = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify(payload)
+    });
+
+    setStatus('🤖 در حال تحلیل با Claude...', '');
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error('خطای سرور: ' + resp.status + ' — ' + errText);
+    }
+
+    const data = await resp.json();
+    renderResult(data);
+    setStatus('✅ تحلیل کامل شد', 'ok');
+  } catch (err) {
+    setStatus('❌ خطا: ' + err.message, 'error');
+  } finally {
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+function renderResult(data) {
+  document.getElementById('resultCard').style.display = 'block';
+  document.getElementById('rDevice').textContent = data.device || 'مشخص نشد';
+  document.getElementById('rBrand').textContent = data.brand_model || 'تشخیص داده نشد';
+  document.getElementById('rIssue').textContent = data.probable_issue || '—';
+  document.getElementById('rConfidence').textContent = data.confidence || '—';
+  document.getElementById('rSuggestions').textContent =
+    Array.isArray(data.safe_suggestions) ? data.safe_suggestions.join('، ') : (data.safe_suggestions || '—');
+
+  const safetyRow = document.getElementById('rSafetyRow');
+  if (data.safety_warning) {
+    safetyRow.style.display = 'block';
+    document.getElementById('rSafety').textContent = data.safety_warning;
+  } else {
+    safetyRow.style.display = 'none';
+  }
+
+  lastFullResponse = data.full_response || '';
+  document.getElementById('rFull').textContent = lastFullResponse || '—';
+
+  // چه ورودی‌هایی واقعاً ارسال شدند (برای تست‌های اجباری)
+  const sentParts = [];
+  if (payloadHad('text')) sentParts.push('💬 متن');
+  if (payloadHad('image')) sentParts.push('📷 عکس');
+  if (payloadHad('audio')) sentParts.push('🎤 صدا (متن استخراج‌شده: «' + (data.transcribed_audio || '') + '»)');
+  document.getElementById('inputsSentBox').textContent =
+    'ورودی‌های ارسال‌شده به AI: ' + (sentParts.length ? sentParts.join(' + ') : 'هیچ‌کدام');
+}
+
+function payloadHad(kind) {
+  if (kind === 'text') return !!document.getElementById('textInput').value.trim();
+  if (kind === 'image') return !!imageBase64;
+  if (kind === 'audio') return !!audioBase64;
+  return false;
+}
+
+// ---------- خواندن پاسخ (Speech Synthesis) ----------
+let utterance = null;
+function speakResult() {
+  if (!lastFullResponse) return;
+  stopSpeaking();
+  utterance = new SpeechSynthesisUtterance(lastFullResponse);
+  utterance.lang = 'fa-IR';
+  utterance.onend = () => {
+    document.getElementById('speakBtn').style.display = 'inline-block';
+    document.getElementById('stopSpeakBtn').style.display = 'none';
+  };
+  speechSynthesis.speak(utterance);
+  document.getElementById('speakBtn').style.display = 'none';
+  document.getElementById('stopSpeakBtn').style.display = 'inline-block';
+}
+function stopSpeaking() {
+  speechSynthesis.cancel();
+  document.getElementById('speakBtn').style.display = 'inline-block';
+  document.getElementById('stopSpeakBtn').style.display = 'none';
+}
+</script>
+
+</body>
+</html>
