@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>AI Test Lab</title>
+<style>
+  :root{
+    --bg:#0f1220;
+    --card:#181c2e;
+    --card-2:#1f2438;
+    --accent:#7c5cff;
+    --accent-2:#22c9a5;
+    --text:#f0f1f8;
+    --muted:#9aa0b4;
+    --danger:#ff5c7a;
+    --ok:#22c9a5;
+    --pending:#ffb454;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:linear-gradient(160deg,#0f1220,#171b2c 60%,#0f1220);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Vazirmatn","Segoe UI",Tahoma,sans-serif;
+    padding:16px;
+    padding-bottom:60px;
+    min-height:100vh;
+    -webkit-tap-highlight-color:transparent;
+  }
+  h1{
+    font-size:22px;
+    margin:4px 0 2px;
+    text-align:center;
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    margin-bottom:18px;
+  }
+  .status-panel{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:14px;
+    margin-bottom:20px;
+    box-shadow:0 4px 20px rgba(0,0,0,.25);
+  }
+  .status-panel h2{
+    font-size:15px;
+    margin:0 0 10px;
+    color:var(--muted);
+    font-weight:600;
+  }
+  .status-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .status-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--card-2);
+    border-radius:12px;
+    padding:8px 12px;
+    font-size:13px;
+  }
+  .status-item .badge{
+    font-size:16px;
+  }
+  section.card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-bottom:18px;
+    box-shadow:0 4px 20px rgba(0,0,0,.25);
+  }
+  section.card h2{
+    font-size:17px;
+    margin:0 0 4px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  section.card p.desc{
+    color:var(--muted);
+    font-size:13px;
+    margin:0 0 14px;
+  }
+  textarea{
+    width:100%;
+    min-height:90px;
+    border-radius:12px;
+    border:1px solid #2c3150;
+    background:var(--card-2);
+    color:var(--text);
+    padding:12px;
+    font-size:15px;
+    font-family:inherit;
+    resize:vertical;
+  }
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    width:100%;
+    padding:16px;
+    margin-top:10px;
+    border:none;
+    border-radius:14px;
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+    background:var(--accent);
+    color:#fff;
+    -webkit-user-select:none;
+    user-select:none;
+    transition:transform .08s ease, opacity .2s ease;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn.secondary{
+    background:var(--card-2);
+    color:var(--text);
+    border:1px solid #2c3150;
+  }
+  .btn.danger{background:var(--danger);}
+  .btn.success{background:var(--ok); color:#0f1220;}
+  .btn-row{
+    display:flex;
+    gap:10px;
+  }
+  .btn-row .btn{margin-top:10px;}
+  .btn:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+  }
+  .result-box{
+    margin-top:14px;
+    padding:12px;
+    border-radius:12px;
+    background:var(--card-2);
+    font-size:14px;
+    line-height:1.8;
+    display:none;
+  }
+  .result-box.show{display:block;}
+  .result-box.ok{border:1px solid rgba(34,201,165,.4);}
+  .result-box.error{border:1px solid rgba(255,92,122,.5); color:#ffb6c4;}
+  img.preview{
+    width:100%;
+    border-radius:12px;
+    margin-top:12px;
+    display:none;
+  }
+  video{
+    width:100%;
+    border-radius:12px;
+    margin-top:12px;
+    background:#000;
+    display:none;
+  }
+  audio{
+    width:100%;
+    margin-top:12px;
+    display:none;
+  }
+  input[type="file"]{display:none;}
+  .rec-dot{
+    display:inline-block;
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:var(--danger);
+    margin-left:6px;
+    animation:pulse 1s infinite;
+  }
+  @keyframes pulse{
+    0%{opacity:1;}
+    50%{opacity:.3;}
+    100%{opacity:1;}
+  }
+  .footer-note{
+    text-align:center;
+    color:var(--muted);
+    font-size:12px;
+    margin-top:24px;
+  }
+</style>
+</head>
+<body>
+
+<h1>🧪 AI Test Lab</h1>
+<p class="subtitle">آزمایشگاه تست قابلیت‌های مرورگر و گوشی — بدون هوش مصنوعی، بدون API</p>
+
+<div class="status-panel">
+  <h2>وضعیت کلی تست‌ها</h2>
+  <div class="status-grid">
+    <div class="status-item"><span>متن</span><span class="badge" id="status-text">⏳</span></div>
+    <div class="status-item"><span>عکس</span><span class="badge" id="status-photo">⏳</span></div>
+    <div class="status-item"><span>دوربین</span><span class="badge" id="status-camera">⏳</span></div>
+    <div class="status-item"><span>میکروفون</span><span class="badge" id="status-mic">⏳</span></div>
+    <div class="status-item"><span>ضبط صدا</span><span class="badge" id="status-record">⏳</span></div>
+    <div class="status-item"><span>پخش صدا</span><span class="badge" id="status-tts">⏳</span></div>
+    <div class="status-item"><span>ویدئو</span><span class="badge" id="status-video">⏳</span></div>
+  </div>
+</div>
+
+<!-- 1. TEXT TEST -->
+<section class="card">
+  <h2>📝 تست متن</h2>
+  <p class="desc">یک متن بنویس و دکمه ارسال را بزن.</p>
+  <textarea id="textInput" placeholder="اینجا بنویس..."></textarea>
+  <button class="btn" id="sendTextBtn">ارسال متن</button>
+  <div class="result-box" id="textResult"></div>
+</section>
+
+<!-- 2. PHOTO TEST -->
+<section class="card">
+  <h2>🖼️ تست عکس</h2>
+  <p class="desc">با دوربین عکس بگیر یا از گالری انتخاب کن.</p>
+  <div class="btn-row">
+    <button class="btn secondary" id="cameraPhotoBtn">📷 گرفتن عکس</button>
+    <button class="btn secondary" id="galleryPhotoBtn">🖼️ انتخاب از گالری</button>
+  </div>
+  <input type="file" id="cameraPhotoInput" accept="image/*" capture="environment">
+  <input type="file" id="galleryPhotoInput" accept="image/*">
+  <img class="preview" id="photoPreview" alt="پیش‌نمایش عکس">
+  <div class="result-box" id="photoResult"></div>
+</section>
+
+<!-- 3. MICROPHONE TEST -->
+<section class="card">
+  <h2>🎤 تست میکروفون</h2>
+  <p class="desc">صدای خودت را ضبط کن و پخش کن.</p>
+  <div class="btn-row">
+    <button class="btn" id="startRecBtn">🎤 شروع ضبط</button>
+    <button class="btn danger" id="stopRecBtn" disabled>⏹ توقف</button>
+  </div>
+  <audio id="audioPlayer" controls></audio>
+  <div class="result-box" id="micResult"></div>
+</section>
+
+<!-- 4. TTS TEST -->
+<section class="card">
+  <h2>🔊 تست پاسخ صوتی</h2>
+  <p class="desc">پخش یک جمله فارسی با صدای مصنوعی مرورگر.</p>
+  <div class="btn-row">
+    <button class="btn" id="playTtsBtn">🔊 پخش پاسخ آزمایشی</button>
+    <button class="btn secondary" id="stopTtsBtn">⏹ توقف صدا</button>
+  </div>
+  <div class="result-box" id="ttsResult"></div>
+</section>
+
+<!-- 5. CAMERA / VIDEO TEST -->
+<section class="card">
+  <h2>🎥 تست دوربین و ویدئو</h2>
+  <p class="desc">دسترسی دوربین را بگیر، تصویر زنده را ببین و ویدئو ضبط کن.</p>
+  <button class="btn" id="startCameraBtn">📷 فعال‌سازی دوربین</button>
+  <video id="liveVideo" autoplay playsinline muted></video>
+  <div class="btn-row">
+    <button class="btn" id="startVideoRecBtn" disabled>⏺ شروع ضبط ویدئو</button>
+    <button class="btn danger" id="stopVideoRecBtn" disabled>⏹ توقف ضبط</button>
+  </div>
+  <p class="desc" id="recIndicator" style="display:none;"><span class="rec-dot"></span>در حال ضبط...</p>
+  <video id="recordedVideo" controls playsinline></video>
+  <div class="result-box" id="videoResult"></div>
+</section>
+
+<p class="footer-note">AI Test Lab · بدون ذخیره‌سازی، بدون سرور، بدون API</p>
+
+<script>
+function setStatus(id, ok){
+  document.getElementById('status-' + id).textContent = ok ? '✅' : '⏳';
+}
+function showResult(el, message, isError){
+  el.textContent = message;
+  el.classList.add('show');
+  el.classList.remove('ok','error');
+  el.classList.add(isError ? 'error' : 'ok');
+}
+function isSecureEnough(){
+  return window.isSecureContext === true;
+}
+
+/* 1. TEXT TEST */
+document.getElementById('sendTextBtn').addEventListener('click', function(){
+  const val = document.getElementById('textInput').value.trim();
+  const box = document.getElementById('textResult');
+  if(!val){
+    showResult(box, '❌ لطفاً ابتدا متنی وارد کن.', true);
+    return;
+  }
+  showResult(box, '✅ متن با موفقیت دریافت شد: «' + val + '» (تعداد کاراکتر: ' + val.length + ')', false);
+  setStatus('text', true);
+});
+
+/* 2. PHOTO TEST */
+const photoResult = document.getElementById('photoResult');
+const photoPreview = document.getElementById('photoPreview');
+
+function handlePhotoFile(file){
+  if(!file){
+    showResult(photoResult, '❌ عکسی انتخاب نشد.', true);
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  photoPreview.src = url;
+  photoPreview.style.display = 'block';
+  const sizeKB = (file.size / 1024).toFixed(1);
+  showResult(photoResult, '✅ عکس با موفقیت دریافت شد.\nنام فایل: ' + (file.name || 'بدون نام (عکس دوربین)') + '\nحجم: ' + sizeKB + ' کیلوبایت', false);
+  setStatus('photo', true);
+}
+
+document.getElementById('cameraPhotoBtn').addEventListener('click', function(){
+  document.getElementById('cameraPhotoInput').click();
+});
+document.getElementById('galleryPhotoBtn').addEventListener('click', function(){
+  document.getElementById('galleryPhotoInput').click();
+});
+document.getElementById('cameraPhotoInput').addEventListener('change', function(e){
+  handlePhotoFile(e.target.files[0]);
+});
+document.getElementById('galleryPhotoInput').addEventListener('change', function(e){
+  handlePhotoFile(e.target.files[0]);
+});
+
+/* 3. MICROPHONE TEST */
+let mediaRecorder;
+let audioChunks = [];
+const micResult = document.getElementById('micResult');
+const audioPlayer = document.getElementById('audioPlayer');
+const startRecBtn = document.getElementById('startRecBtn');
+const stopRecBtn = document.getElementById('stopRecBtn');
+
+startRecBtn.addEventListener('click', async function(){
+  if(!isSecureEnough()){
+    showResult(micResult, '❌ این صفحه باید روی HTTPS اجرا شود تا دسترسی میکروفون کار کند.', true);
+    return;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    showResult(micResult, '❌ مرورگر شما از ضبط صدا پشتیبانی نمی‌کند.', true);
+    return;
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    setStatus('mic', true);
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = function(e){
+      if(e.data.size > 0) audioChunks.push(e.data);
+    };
+    mediaRecorder.onstop = function(){
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      audioPlayer.src = url;
+      audioPlayer.style.display = 'block';
+      showResult(micResult, '✅ ضبط صدا با موفقیت انجام شد. حجم فایل: ' + (blob.size / 1024).toFixed(1) + ' کیلوبایت. حالا می‌توانی پخش کنی.', false);
+      setStatus('record', true);
+      stream.getTracks().forEach(t => t.stop());
+    };
+    mediaRecorder.start();
+    startRecBtn.disabled = true;
+    stopRecBtn.disabled = false;
+    showResult(micResult, '🎙 در حال ضبط... هر وقت آماده بودی دکمه توقف را بزن.', false);
+  }catch(err){
+    showResult(micResult, '❌ اجازه میکروفون داده نشد. لطفاً از تنظیمات Safari به این صفحه اجازه دسترسی به میکروفون را بده و مطمئن شو صفحه روی HTTPS اجرا می‌شود.', true);
+  }
+});
+
+stopRecBtn.addEventListener('click', function(){
+  if(mediaRecorder && mediaRecorder.state !== 'inactive'){
+    mediaRecorder.stop();
+  }
+  startRecBtn.disabled = false;
+  stopRecBtn.disabled = true;
+});
+
+/* 4. TTS TEST */
+const ttsResult = document.getElementById('ttsResult');
+document.getElementById('playTtsBtn').addEventListener('click', function(){
+  if(!('speechSynthesis' in window)){
+    showResult(ttsResult, '❌ مرورگر شما از پخش صدا (Speech Synthesis) پشتیبانی نمی‌کند.', true);
+    return;
+  }
+  const utterance = new SpeechSynthesisUtterance('سلام، این یک پیام آزمایشی برای تست پخش صدا در مرورگر است.');
+  utterance.lang = 'fa-IR';
+  utterance.onend = function(){
+    showResult(ttsResult, '✅ پخش صدا با موفقیت به پایان رسید.', false);
+  };
+  utterance.onerror = function(){
+    showResult(ttsResult, '❌ خطایی در پخش صدا رخ داد.', true);
+  };
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+  showResult(ttsResult, '🔊 در حال پخش...', false);
+  setStatus('tts', true);
+});
+document.getElementById('stopTtsBtn').addEventListener('click', function(){
+  if('speechSynthesis' in window){
+    window.speechSynthesis.cancel();
+    showResult(ttsResult, '⏹ پخش صدا متوقف شد.', false);
+  }
+});
+
+/* 5. CAMERA / VIDEO TEST */
+let cameraStream;
+let videoRecorder;
+let videoChunks = [];
+const videoResult = document.getElementById('videoResult');
+const liveVideo = document.getElementById('liveVideo');
+const recordedVideo = document.getElementById('recordedVideo');
+const startCameraBtn = document.getElementById('startCameraBtn');
+const startVideoRecBtn = document.getElementById('startVideoRecBtn');
+const stopVideoRecBtn = document.getElementById('stopVideoRecBtn');
+const recIndicator = document.getElementById('recIndicator');
+
+startCameraBtn.addEventListener('click', async function(){
+  if(!isSecureEnough()){
+    showResult(videoResult, '❌ این صفحه باید روی HTTPS اجرا شود تا دسترسی دوربین کار کند.', true);
+    return;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    showResult(videoResult, '❌ مرورگر شما از دسترسی دوربین پشتیبانی نمی‌کند.', true);
+    return;
+  }
+  try{
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: true
+    });
+    liveVideo.srcObject = cameraStream;
+    liveVideo.style.display = 'block';
+    setStatus('camera', true);
+    startVideoRecBtn.disabled = false;
+    showResult(videoResult, '✅ دسترسی دوربین با موفقیت گرفته شد. تصویر زنده در حال نمایش است.', false);
+  }catch(err){
+    showResult(videoResult, '❌ اجازه دوربین داده نشد. لطفاً از تنظیمات Safari دسترسی دوربین را فعال کن و مطمئن شو صفحه روی HTTPS اجرا می‌شود.', true);
+  }
+});
+
+startVideoRecBtn.addEventListener('click', function(){
+  if(!cameraStream) return;
+  videoChunks = [];
+  try{
+    videoRecorder = new MediaRecorder(cameraStream);
+  }catch(err){
+    showResult(videoResult, '❌ ضبط ویدئو در این مرورگر پشتیبانی نمی‌شود.', true);
+    return;
+  }
+  videoRecorder.ondataavailable = function(e){
+    if(e.data.size > 0) videoChunks.push(e.data);
+  };
+  videoRecorder.onstop = function(){
+    const blob = new Blob(videoChunks, { type: 'video/mp4' });
+    const url = URL.createObjectURL(blob);
+    recordedVideo.src = url;
+    recordedVideo.style.display = 'block';
+    showResult(videoResult, '✅ ضبط ویدئو با موفقیت انجام شد. حجم فایل: ' + (blob.size / 1024 / 1024).toFixed(2) + ' مگابایت. حالا می‌توانی پخش کنی.', false);
+    setStatus('video', true);
+    recIndicator.style.display = 'none';
+  };
+  videoRecorder.start();
+  startVideoRecBtn.disabled = true;
+  stopVideoRecBtn.disabled = false;
+  recIndicator.style.display = 'block';
+});
+
+stopVideoRecBtn.addEventListener('click', function(){
+  if(videoRecorder && videoRecorder.state !== 'inactive'){
+    videoRecorder.stop();
+  }
+  startVideoRecBtn.disabled = false;
+  stopVideoRecBtn.disabled = true;
+});
+</script>
+
+</body>
+</html>
