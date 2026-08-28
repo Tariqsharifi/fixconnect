@@ -113,7 +113,7 @@
 <body>
 
 <h1>🧪 آزمایشگاه AI — تست ۲</h1>
-<div class="sub">عکس + صدا + متن → تحلیل با Claude → پاسخ متنی و صوتی</div>
+<div class="sub">عکس + صدا + متن → تحلیل با Gemini → پاسخ متنی و صوتی</div>
 
 <!-- ⚠️ CONFIG: مقادیر زیر را با اطلاعات پروژه Supabase خودتان جایگزین کنید -->
 <script>
@@ -142,7 +142,7 @@
   <button class="btn btn-danger" id="removeAudioBtn" style="display:none" onclick="removeAudio()">حذف صدا</button>
 </div>
 
-<button class="btn-main" id="analyzeBtn" onclick="runAnalysis()">🔍 تحلیل با Claude</button>
+<button class="btn-main" id="analyzeBtn" onclick="runAnalysis()">🔍 تحلیل با AI</button>
 
 <div id="statusBox" class="status-box" style="display:none"></div>
 
@@ -294,7 +294,7 @@ async function runAnalysis() {
       body: JSON.stringify(payload)
     });
 
-    setStatus('🤖 در حال تحلیل با Claude...', '');
+    setStatus('🤖 در حال تحلیل با AI...', '');
 
     if (!resp.ok) {
       const errText = await resp.text();
@@ -302,6 +302,7 @@ async function runAnalysis() {
     }
 
     const data = await resp.json();
+    if (data.error) throw new Error(data.error);
     renderResult(data);
     setStatus('✅ تحلیل کامل شد', 'ok');
   } catch (err) {
@@ -312,39 +313,37 @@ async function runAnalysis() {
 }
 
 function renderResult(data) {
+  const a = data.analysis || {};
+  const inputs = data.inputsReceived || {};
+
   document.getElementById('resultCard').style.display = 'block';
-  document.getElementById('rDevice').textContent = data.device || 'مشخص نشد';
-  document.getElementById('rBrand').textContent = data.brand_model || 'تشخیص داده نشد';
-  document.getElementById('rIssue').textContent = data.probable_issue || '—';
-  document.getElementById('rConfidence').textContent = data.confidence || '—';
+  document.getElementById('rDevice').textContent = a.device || 'تشخیص داده نشد';
+  document.getElementById('rBrand').textContent = a.brand || 'تشخیص داده نشد';
+  document.getElementById('rIssue').textContent = a.problem || '—';
+  document.getElementById('rConfidence').textContent = a.confidence || '—';
   document.getElementById('rSuggestions').textContent =
-    Array.isArray(data.safe_suggestions) ? data.safe_suggestions.join('، ') : (data.safe_suggestions || '—');
+    Array.isArray(a.suggestions) && a.suggestions.length ? a.suggestions.join('، ') : '—';
 
   const safetyRow = document.getElementById('rSafetyRow');
-  if (data.safety_warning) {
+  if (a.safetyWarning) {
     safetyRow.style.display = 'block';
-    document.getElementById('rSafety').textContent = data.safety_warning;
+    document.getElementById('rSafety').textContent = a.safetyWarning;
   } else {
     safetyRow.style.display = 'none';
   }
 
-  lastFullResponse = data.full_response || '';
+  lastFullResponse = a.fullText || '';
   document.getElementById('rFull').textContent = lastFullResponse || '—';
 
   // چه ورودی‌هایی واقعاً ارسال شدند (برای تست‌های اجباری)
   const sentParts = [];
-  if (payloadHad('text')) sentParts.push('💬 متن');
-  if (payloadHad('image')) sentParts.push('📷 عکس');
-  if (payloadHad('audio')) sentParts.push('🎤 صدا (متن استخراج‌شده: «' + (data.transcribed_audio || '') + '»)');
+  if (inputs.text) sentParts.push('💬 متن');
+  if (inputs.image) sentParts.push('📷 عکس');
+  if (inputs.audio) {
+    sentParts.push('🎤 صدا (متن استخراج‌شده: «' + (inputs.transcribedVoiceText || '') + '»)');
+  }
   document.getElementById('inputsSentBox').textContent =
     'ورودی‌های ارسال‌شده به AI: ' + (sentParts.length ? sentParts.join(' + ') : 'هیچ‌کدام');
-}
-
-function payloadHad(kind) {
-  if (kind === 'text') return !!document.getElementById('textInput').value.trim();
-  if (kind === 'image') return !!imageBase64;
-  if (kind === 'audio') return !!audioBase64;
-  return false;
 }
 
 // ---------- خواندن پاسخ (Speech Synthesis) ----------
