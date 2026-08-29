@@ -389,25 +389,38 @@ async function speakResult() {
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
 
-    currentAudio = new Audio(`data:${data.mimeType};base64,${data.audioBase64}`);
-    currentAudio.onended = () => {
-      document.getElementById('speakBtn').style.display = 'inline-block';
-      document.getElementById('stopSpeakBtn').style.display = 'none';
-    };
-    currentAudio.play();
-    document.getElementById('speakBtn').style.display = 'none';
-    document.getElementById('stopSpeakBtn').style.display = 'inline-block';
+    const player = document.getElementById('ttsPlayer');
+    player.src = `data:${data.mimeType};base64,${data.audioBase64}`;
+    player.style.display = 'block';
+
+    try {
+      await player.play();
+      document.getElementById('speakBtn').style.display = 'none';
+      document.getElementById('stopSpeakBtn').style.display = 'inline-block';
+      currentAudio = player;
+      player.onended = () => {
+        document.getElementById('speakBtn').style.display = 'inline-block';
+        document.getElementById('stopSpeakBtn').style.display = 'none';
+      };
+    } catch (playErr) {
+      document.getElementById('speakBtn').textContent = '🔊 پاسخ را بخوان (پلیر پایین را لمس کن ▶️)';
+    }
   } catch (err) {
     alert('خطا در تولید صدا: ' + err.message);
   } finally {
-    document.getElementById('speakBtn').textContent = '🔊 پاسخ را بخوان';
+    if (document.getElementById('speakBtn').textContent === '⏳ در حال آماده‌سازی صدا...') {
+      document.getElementById('speakBtn').textContent = '🔊 پاسخ را بخوان';
+    }
     document.getElementById('speakBtn').disabled = false;
   }
 }
 
 function stopSpeaking() {
-  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  const player = document.getElementById('ttsPlayer');
+  player.pause();
+  currentAudio = null;
   document.getElementById('speakBtn').style.display = 'inline-block';
+  document.getElementById('speakBtn').textContent = '🔊 پاسخ را بخوان';
   document.getElementById('stopSpeakBtn').style.display = 'none';
 }
 
