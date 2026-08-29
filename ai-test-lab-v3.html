@@ -54,6 +54,7 @@
 <!-- ⚠️ CONFIG -->
 <script>
   const SUPABASE_FUNCTION_URL = "https://jtkjgmpotablnmcbrjkn.supabase.co/functions/v1/ai-test-lab-repair";
+  const SUPABASE_TTS_URL = "https://jtkjgmpotablnmcbrjkn.supabase.co/functions/v1/ai-test-lab-tts";
   const SUPABASE_ANON_KEY = "sb_publishable_PM2ydrpkgoM9yQU4uMUeRg_H3cvHQp3";
 </script>
 
@@ -102,6 +103,10 @@
   <div class="result-row"><div class="label">🔧 حرفه موردنیاز</div><div class="value" id="rProfession">—</div></div>
   <div class="result-row"><div class="label">📊 میزان اطمینان</div><div class="value" id="rConfidence">—</div></div>
 
+  <button class="btn btn-plum" id="speakBtn" onclick="speakResult()">🔊 خواندن نتیجه</button>
+  <button class="btn btn-outline" id="stopSpeakBtn" onclick="stopSpeaking()" style="display:none">⏹️ توقف صدا</button>
+  <audio id="ttsPlayer" controls style="display:none; width:100%; margin-top:8px;"></audio>
+
   <hr class="sep">
   <h3>تعمیرکارهای پیدا شده</h3>
   <div id="proList"></div>
@@ -145,6 +150,55 @@
 let imageBase64 = null, imageMimeType = null;
 let audioBase64 = null, audioMimeType = null;
 let mediaRecorder = null, audioChunks = [];
+let lastSummaryText = "";
+let currentAudio = null;
+
+async function speakResult() {
+  if (!lastSummaryText) return;
+  stopSpeaking();
+  document.getElementById('speakBtn').textContent = '⏳ در حال آماده‌سازی صدا...';
+  document.getElementById('speakBtn').disabled = true;
+  try {
+    const resp = await fetch(SUPABASE_TTS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ text: lastSummaryText })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    const player = document.getElementById('ttsPlayer');
+    player.src = `data:${data.mimeType};base64,${data.audioBase64}`;
+    player.style.display = 'block';
+    try {
+      await player.play();
+      document.getElementById('speakBtn').style.display = 'none';
+      document.getElementById('stopSpeakBtn').style.display = 'inline-block';
+      currentAudio = player;
+      player.onended = () => {
+        document.getElementById('speakBtn').style.display = 'inline-block';
+        document.getElementById('stopSpeakBtn').style.display = 'none';
+      };
+    } catch (playErr) {
+      document.getElementById('speakBtn').textContent = '🔊 خواندن نتیجه (پلیر پایین را لمس کن ▶️)';
+    }
+  } catch (err) {
+    alert('خطا در تولید صدا: ' + err.message);
+  } finally {
+    if (document.getElementById('speakBtn').textContent === '⏳ در حال آماده‌سازی صدا...') {
+      document.getElementById('speakBtn').textContent = '🔊 خواندن نتیجه';
+    }
+    document.getElementById('speakBtn').disabled = false;
+  }
+}
+
+function stopSpeaking() {
+  const player = document.getElementById('ttsPlayer');
+  player.pause();
+  currentAudio = null;
+  document.getElementById('speakBtn').style.display = 'inline-block';
+  document.getElementById('speakBtn').textContent = '🔊 خواندن نتیجه';
+  document.getElementById('stopSpeakBtn').style.display = 'none';
+}
 
 // ---------- بارگذاری لیست حرفه‌ها برای فرم ثبت‌نام ----------
 async function loadProfessions() {
@@ -289,9 +343,15 @@ function renderResult(data) {
   document.getElementById('rProfession').textContent = a.required_profession || 'نامشخص';
   document.getElementById('rConfidence').textContent = a.confidence || 'نامشخص';
 
+  const pros = data.matchingProfessionals || [];
+  lastSummaryText =
+    `وسیلهٔ شناسایی‌شده: ${a.device_type || 'نامشخص'}. ` +
+    `مشکل احتمالی: ${a.possible_problem || 'نامشخص'}. ` +
+    `حرفهٔ موردنیاز: ${a.required_profession || 'نامشخص'}. ` +
+    (pros.length ? `${pros.length} تعمیرکار مرتبط پیدا شد: ${pros.map(p => p.name).join('، ')}.` : 'هیچ تعمیرکار مرتبطی پیدا نشد.');
+
   const proList = document.getElementById('proList');
   proList.innerHTML = '';
-  const pros = data.matchingProfessionals || [];
   document.getElementById('noProMsg').style.display = pros.length ? 'none' : 'block';
   pros.forEach(p => {
     const div = document.createElement('div');
