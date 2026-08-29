@@ -138,11 +138,16 @@
   <div id="regStatus" style="font-size:13px;margin-top:8px"></div>
 </div>
 
-<!-- ---------- Modal چت/تماس ---------- -->
-<div class="modal-overlay" id="mockModal">
-  <div class="modal-box">
-    <div id="mockModalText">این قابلیت در نسخه اصلی فعال خواهد شد.</div>
-    <button class="btn btn-outline" onclick="closeMockModal()">باشه</button>
+<!-- ---------- Modal چت واقعی ---------- -->
+<div class="modal-overlay" id="chatModal">
+  <div class="modal-box" style="max-width:360px; width:90%; text-align:right">
+    <div style="font-weight:700; margin-bottom:8px" id="chatModalTitle">چت با تعمیرکار</div>
+    <div id="chatMessages" style="max-height:260px; overflow-y:auto; background:#f8f7f5; border-radius:10px; padding:10px; font-size:14px; margin-bottom:8px"></div>
+    <div style="display:flex; gap:6px">
+      <input type="text" id="chatInput" placeholder="پیام..." style="flex:1; margin-top:0">
+      <button class="btn btn-plum" style="margin-top:0" onclick="sendChatMessage()">ارسال</button>
+    </div>
+    <button class="btn btn-outline" onclick="closeChatModal()" style="margin-top:12px; width:100%">بستن</button>
   </div>
 </div>
 
@@ -359,8 +364,10 @@ function renderResult(data) {
     div.innerHTML = `
       <div class="name">✅ ${p.name} ${p.business_name ? '(' + p.business_name + ')' : ''}</div>
       <div class="specs">تخصص: ${(p.specialties || []).join('، ')} — شهر: ${p.city}</div>
-      <button class="btn btn-outline" onclick="openMockModal('چت')">💬 چت با تعمیرکار</button>
-      <button class="btn btn-outline" onclick="openMockModal('تماس')">📞 تماس با تعمیرکار</button>
+      <button class="btn btn-outline" onclick='openChatModal(${JSON.stringify(p.id)}, ${JSON.stringify(p.name)})'>💬 چت با تعمیرکار</button>
+      ${p.phone
+        ? `<a class="btn btn-plum" href="tel:${p.phone}" style="text-decoration:none">📞 تماس با ${p.phone}</a>`
+        : `<button class="btn btn-outline" disabled>📞 شماره ثبت نشده</button>`}
     `;
     proList.appendChild(div);
   });
@@ -379,12 +386,84 @@ ${d.transcribedVoiceText ? '📝 متن استخراج‌شده از صدا: ' +
 ❌ Filtered Professionals: ${d.filteredCount}`;
 }
 
-// ---------- Modal چت/تماس ----------
-function openMockModal(kind) {
-  document.getElementById('mockModalText').textContent = 'این قابلیت (' + kind + ') در نسخه اصلی فعال خواهد شد.';
-  document.getElementById('mockModal').style.display = 'flex';
+// ---------- چت واقعی (سمت مشتری) ----------
+function getCustomerId() {
+  let id = localStorage.getItem('ai_test_lab_customer_id');
+  if (!id) {
+    id = 'customer-' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('ai_test_lab_customer_id', id);
+  }
+  return id;
 }
-function closeMockModal() { document.getElementById('mockModal').style.display = 'none'; }
+
+let currentChatProfessionalId = null;
+let chatPollTimer = null;
+
+function openChatModal(professionalId, professionalName) {
+  currentChatProfessionalId = professionalId;
+  document.getElementById('chatModalTitle').textContent = 'چت با ' + professionalName;
+  document.getElementById('chatMessages').innerHTML = 'در حال بارگذاری...';
+  document.getElementById('chatModal').style.display = 'flex';
+  loadChatMessages();
+  clearInterval(chatPollTimer);
+  chatPollTimer = setInterval(loadChatMessages, 4000);
+}
+
+function closeChatModal() {
+  document.getElementById('chatModal').style.display = 'none';
+  clearInterval(chatPollTimer);
+  currentChatProfessionalId = null;
+}
+
+async function loadChatMessages() {
+  if (!currentChatProfessionalId) return;
+  try {
+    const resp = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ action: 'getMessages', professionalId: currentChatProfessionalId, customerId: getCustomerId() })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    const box = document.getElementById('chatMessages');
+    if (!data.messages.length) {
+      box.innerHTML = '<div style="color:#999">هنوز پیامی نیست — اولین پیام رو بفرست.</div>';
+      return;
+    }
+    box.innerHTML = data.messages.map(m => `
+      <div style="margin-bottom:8px; text-align:${m.sender === 'customer' ? 'left' : 'right'}">
+        <span style="display:inline-block; padding:6px 10px; border-radius:10px; background:${m.sender === 'customer' ? '#6b3f4d' : '#eee'}; color:${m.sender === 'customer' ? '#fff' : '#333'}">
+          ${m.message}
+        </span>
+      </div>
+    `).join('');
+    box.scrollTop = box.scrollHeight;
+  } catch (err) {
+    document.getElementById('chatMessages').textContent = 'خطا: ' + err.message;
+  }
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if (!message || !currentChatProfessionalId) return;
+  input.value = '';
+  try {
+    const resp = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({
+        action: 'sendMessage', professionalId: currentChatProfessionalId,
+        customerId: getCustomerId(), sender: 'customer', message
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    loadChatMessages();
+  } catch (err) {
+    alert('خطا در ارسال پیام: ' + err.message);
+  }
+}
 
 // ---------- ثبت‌نام تعمیرکار ----------
 async function registerProfessional() {
