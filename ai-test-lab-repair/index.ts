@@ -233,6 +233,58 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---------- گرفتن لیست تعمیرکارها (برای صفحهٔ خود تعمیرکار) ----------
+    if (action === "listProfessionals") {
+      const professionals = await dbSelect("professionals", "select=id,name,city,specialties&order=name");
+      return json({ professionals });
+    }
+
+    // ---------- ارسال پیام چت ----------
+    if (action === "sendMessage") {
+      const { professionalId, customerId, sender, message } = body;
+      if (!professionalId || !customerId || !sender || !message) {
+        return json({ error: "professionalId، customerId، sender و message لازم است." }, 400);
+      }
+      if (sender !== "customer" && sender !== "professional") {
+        return json({ error: "sender باید customer یا professional باشد." }, 400);
+      }
+      const inserted = await dbInsert("chat_messages", {
+        professional_id: professionalId,
+        customer_id: customerId,
+        sender,
+        message,
+      });
+      return json({ message: inserted[0] });
+    }
+
+    // ---------- گرفتن پیام‌های یک مکالمه ----------
+    if (action === "getMessages") {
+      const { professionalId, customerId } = body;
+      if (!professionalId || !customerId) {
+        return json({ error: "professionalId و customerId لازم است." }, 400);
+      }
+      const messages = await dbSelect(
+        "chat_messages",
+        `select=*&professional_id=eq.${encodeURIComponent(professionalId)}&customer_id=eq.${encodeURIComponent(customerId)}&order=created_at.asc`,
+      );
+      return json({ messages });
+    }
+
+    // ---------- لیست مکالمات یک تعمیرکار (برای صفحهٔ خود تعمیرکار) ----------
+    if (action === "getConversations") {
+      const { professionalId } = body;
+      if (!professionalId) return json({ error: "professionalId لازم است." }, 400);
+      const rows = await dbSelect(
+        "chat_messages",
+        `select=customer_id,message,sender,created_at&professional_id=eq.${encodeURIComponent(professionalId)}&order=created_at.desc`,
+      );
+      const seen = new Map();
+      for (const row of rows) {
+        if (!seen.has(row.customer_id)) seen.set(row.customer_id, row);
+      }
+      return json({ conversations: Array.from(seen.values()) });
+    }
+
     return json({ error: "action نامعتبر است." }, 400);
   } catch (err) {
     return json({ error: String(err instanceof Error ? err.message : err) }, 500);
