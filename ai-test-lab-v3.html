@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>آزمایشگاه AI - تست ۳</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Tahoma, sans-serif; background: #f5f3f0; margin: 0; padding: 16px; color: #2a2a2a; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  h2.page-title { font-size: 17px; margin: 4px 0 14px; }
+  .sub { color: #777; font-size: 13px; margin-bottom: 20px; }
+  .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .card h3 { font-size: 15px; margin: 0 0 10px; }
+  textarea, select, input[type=text], input[type=tel] {
+    width: 100%; border: 1px solid #ddd; border-radius: 10px; padding: 10px;
+    font-family: inherit; font-size: 15px; margin-top: 4px;
+  }
+  textarea { min-height: 80px; resize: vertical; }
+  input[type=file] { display: none; }
+  label.field-label { font-size: 13px; color: #666; display: block; margin-top: 10px; }
+  .btn { display: inline-block; padding: 10px 16px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; margin-left: 6px; margin-top: 6px; }
+  .btn-plum { background: #6b3f4d; color: #fff; }
+  .btn-outline { background: #fff; border: 1px solid #ccc; color: #333; }
+  .btn-danger { background: #b23a3a; color: #fff; }
+  .btn-main { display: block; width: 100%; padding: 16px; font-size: 17px; border-radius: 12px; background: #6b3f4d; color: #fff; border: none; font-weight: 700; margin: 10px 0 4px; }
+  .btn-main:disabled { background: #b8a3aa; }
+  img.preview { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; }
+  .status-box { text-align: center; padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 14px; background: #eee; }
+  .status-error { background: #fbe4e4; color: #a12727; }
+  .status-ok { background: #e5f3e5; color: #256b25; }
+  .result-row { margin-bottom: 10px; }
+  .result-row .label { font-size: 13px; color: #888; margin-bottom: 3px; }
+  .result-row .value { font-size: 15px; }
+  .pro-card { border: 1px solid #e5e0da; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .pro-card .name { font-weight: 700; font-size: 15px; }
+  .pro-card .specs { font-size: 13px; color: #666; margin: 4px 0 8px; }
+  .rec-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #b23a3a; margin-left: 6px; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .debug-box { font-size: 12px; line-height: 1.9; background: #1f1f1f; color: #9be89b; padding: 12px; border-radius: 10px; direction: ltr; text-align: left; white-space: pre-wrap; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .modal-box { background: #fff; border-radius: 14px; padding: 20px; max-width: 320px; text-align: center; }
+  .modal-box button { margin-top: 14px; }
+  .tag { display: inline-block; background: #f0eeeb; border-radius: 20px; padding: 3px 10px; font-size: 12px; margin-left: 4px; }
+  hr.sep { border: none; border-top: 1px solid #e5e0da; margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<h1>🧪 آزمایشگاه AI — تست ۳</h1>
+<div class="sub">عکس + صدا + متن → تشخیص وسیله → تعیین حرفه → پیدا کردن تعمیرکار مرتبط از دیتابیس</div>
+
+<!-- ⚠️ CONFIG -->
+<script>
+  const SUPABASE_FUNCTION_URL = "https://jtkjgmpotablnmcbrjkn.supabase.co/functions/v1/ai-test-lab-repair";
+  const SUPABASE_ANON_KEY = "sb_publishable_PM2ydrpkgoM9yQU4uMUeRg_H3cvHQp3";
+</script>
+
+<h2 class="page-title">🔧 وسیله من چه مشکلی دارد؟</h2>
+
+<div class="card">
+  <h3>📍 شهر</h3>
+  <select id="citySelect">
+    <option value="تهران">تهران</option>
+  </select>
+  <div style="font-size:12px;color:#999;margin-top:6px">فعلاً فقط تهران — بعداً می‌شه GPS/محدوده/شعاع خدمات اضافه کرد.</div>
+</div>
+
+<div class="card">
+  <h3>💬 متن</h3>
+  <textarea id="textInput" placeholder="مثلاً: یخچال صدای تق‌تق می‌دهد و خوب سرد نمی‌کند."></textarea>
+</div>
+
+<div class="card">
+  <h3>📷 عکس</h3>
+  <button class="btn btn-outline" onclick="document.getElementById('imgInput').click()">افزودن عکس (دوربین یا گالری)</button>
+  <input type="file" id="imgInput" accept="image/*">
+  <img id="imgPreview" class="preview" style="display:none">
+  <button class="btn btn-danger" id="removeImgBtn" style="display:none" onclick="removeImage()">حذف عکس</button>
+</div>
+
+<div class="card">
+  <h3>🎤 صدا</h3>
+  <button class="btn btn-plum" id="recBtn" onclick="toggleRecording()">🎙️ ضبط توضیح</button>
+  <span id="recIndicator" style="display:none"><span class="rec-dot"></span>در حال ضبط...</span>
+  <audio id="audioPlayback" controls style="display:none; width:100%; margin-top:8px"></audio>
+  <button class="btn btn-danger" id="removeAudioBtn" style="display:none" onclick="removeAudio()">حذف صدا</button>
+</div>
+
+<button class="btn-main" id="analyzeBtn" onclick="runAnalysis()">🔍 تشخیص و پیدا کردن تعمیرکار</button>
+
+<div id="statusBox" class="status-box" style="display:none"></div>
+
+<!-- ---------- نتیجه: درخواست تعمیر ---------- -->
+<div id="resultCard" class="card" style="display:none">
+  <h3>📬 درخواست تعمیر</h3>
+
+  <div class="result-row"><div class="label">وسیله</div><div class="value" id="rDevice">—</div></div>
+  <div class="result-row"><div class="label">برند / مدل</div><div class="value" id="rBrandModel">—</div></div>
+  <div class="result-row"><div class="label">مشکل</div><div class="value" id="rProblem">—</div></div>
+  <div class="result-row"><div class="label">🔧 حرفه موردنیاز</div><div class="value" id="rProfession">—</div></div>
+  <div class="result-row"><div class="label">📊 میزان اطمینان</div><div class="value" id="rConfidence">—</div></div>
+
+  <hr class="sep">
+  <h3>تعمیرکارهای پیدا شده</h3>
+  <div id="proList"></div>
+  <div id="noProMsg" style="display:none;color:#a12727;font-size:14px">هیچ تعمیرکار مرتبطی در این شهر پیدا نشد.</div>
+</div>
+
+<!-- ---------- Debug ---------- -->
+<div id="debugCard" class="card" style="display:none">
+  <h3>📊 Debug / آزمایش</h3>
+  <div class="debug-box" id="debugBox"></div>
+</div>
+
+<hr class="sep">
+
+<!-- ---------- ثبت‌نام تعمیرکار ---------- -->
+<div class="card">
+  <h3>👨‍💼 ثبت‌نام تعمیرکار (شبیه‌سازی)</h3>
+  <label class="field-label">نام</label>
+  <input type="text" id="regName">
+  <label class="field-label">شماره تلفن آزمایشی</label>
+  <input type="tel" id="regPhone">
+  <label class="field-label">شهر</label>
+  <select id="regCity"><option value="تهران">تهران</option></select>
+  <label class="field-label">نام کسب‌وکار (اختیاری)</label>
+  <input type="text" id="regBusiness">
+  <label class="field-label">تخصص‌ها</label>
+  <div id="professionsCheckboxes">در حال بارگذاری لیست حرفه‌ها...</div>
+  <button class="btn btn-plum" onclick="registerProfessional()" style="margin-top:12px">✅ ثبت</button>
+  <div id="regStatus" style="font-size:13px;margin-top:8px"></div>
+</div>
+
+<!-- ---------- Modal چت/تماس ---------- -->
+<div class="modal-overlay" id="mockModal">
+  <div class="modal-box">
+    <div id="mockModalText">این قابلیت در نسخه اصلی فعال خواهد شد.</div>
+    <button class="btn btn-outline" onclick="closeMockModal()">باشه</button>
+  </div>
+</div>
+
+<script>
+let imageBase64 = null, imageMimeType = null;
+let audioBase64 = null, audioMimeType = null;
+let mediaRecorder = null, audioChunks = [];
+
+// ---------- بارگذاری لیست حرفه‌ها برای فرم ثبت‌نام ----------
+async function loadProfessions() {
+  try {
+    const resp = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ action: 'professions' })
+    });
+    const data = await resp.json();
+    const box = document.getElementById('professionsCheckboxes');
+    box.innerHTML = '';
+    (data.professions || []).forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'checkbox-row';
+      row.innerHTML = `<input type="checkbox" value="${p}" class="profChk"> <span>${p}</span>`;
+      box.appendChild(row);
+    });
+  } catch (err) {
+    document.getElementById('professionsCheckboxes').textContent = 'خطا در بارگذاری لیست حرفه‌ها: ' + err.message;
+  }
+}
+loadProfessions();
+
+// ---------- عکس ----------
+document.getElementById('imgInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX_DIM = 1024;
+      let { width, height } = img;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width > height) { height = Math.round(height * (MAX_DIM / width)); width = MAX_DIM; }
+        else { width = Math.round(width * (MAX_DIM / height)); height = MAX_DIM; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      imageMimeType = 'image/jpeg';
+      imageBase64 = dataUrl.split(',')[1];
+      document.getElementById('imgPreview').src = dataUrl;
+      document.getElementById('imgPreview').style.display = 'block';
+      document.getElementById('removeImgBtn').style.display = 'inline-block';
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+function removeImage() {
+  imageBase64 = null; imageMimeType = null;
+  document.getElementById('imgPreview').style.display = 'none';
+  document.getElementById('removeImgBtn').style.display = 'none';
+  document.getElementById('imgInput').value = '';
+}
+
+// ---------- صدا ----------
+async function toggleRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') { mediaRecorder.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let mimeType = 'audio/mp4';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
+    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/mp4' });
+      audioMimeType = blob.type;
+      const reader = new FileReader();
+      reader.onload = () => { audioBase64 = reader.result.split(',')[1]; };
+      reader.readAsDataURL(blob);
+      const player = document.getElementById('audioPlayback');
+      player.src = URL.createObjectURL(blob);
+      player.style.display = 'block';
+      document.getElementById('removeAudioBtn').style.display = 'inline-block';
+      stream.getTracks().forEach(t => t.stop());
+      document.getElementById('recIndicator').style.display = 'none';
+      document.getElementById('recBtn').textContent = '🎙️ ضبط توضیح';
+    };
+    mediaRecorder.start();
+    document.getElementById('recIndicator').style.display = 'inline-block';
+    document.getElementById('recBtn').textContent = '⏹️ توقف ضبط';
+  } catch (err) { alert('دسترسی به میکروفون ممکن نشد: ' + err.message); }
+}
+function removeAudio() {
+  audioBase64 = null; audioMimeType = null;
+  document.getElementById('audioPlayback').style.display = 'none';
+  document.getElementById('removeAudioBtn').style.display = 'none';
+}
+
+// ---------- تحلیل + تطبیق ----------
+function setStatus(text, kind) {
+  const box = document.getElementById('statusBox');
+  box.style.display = 'block';
+  box.textContent = text;
+  box.className = 'status-box' + (kind ? ' status-' + kind : '');
+}
+
+async function runAnalysis() {
+  const text = document.getElementById('textInput').value.trim();
+  const city = document.getElementById('citySelect').value;
+  if (!text && !imageBase64 && !audioBase64) { alert('حداقل یکی از متن، عکس یا صدا را وارد کنید.'); return; }
+
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('resultCard').style.display = 'none';
+  document.getElementById('debugCard').style.display = 'none';
+  setStatus('⏳ در حال ارسال...', '');
+
+  try {
+    setStatus('🤖 در حال تحلیل با AI و جستجوی تعمیرکار...', '');
+    const resp = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({
+        action: 'analyze', text: text || null,
+        imageBase64, imageMimeType, audioBase64, audioMimeType, city
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    renderResult(data);
+    setStatus('✅ تحلیل کامل شد', 'ok');
+  } catch (err) {
+    setStatus('❌ خطا: ' + err.message, 'error');
+  } finally {
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+function renderResult(data) {
+  const a = data.analysis || {};
+  document.getElementById('resultCard').style.display = 'block';
+  document.getElementById('rDevice').textContent = a.device_type || 'نامشخص';
+  document.getElementById('rBrandModel').textContent = `${a.brand || 'نامشخص'} / ${a.model || 'نامشخص'}`;
+  document.getElementById('rProblem').textContent =
+    (Array.isArray(a.symptoms) && a.symptoms.length ? a.symptoms.join('، ') + ' — ' : '') + (a.possible_problem || '');
+  document.getElementById('rProfession').textContent = a.required_profession || 'نامشخص';
+  document.getElementById('rConfidence').textContent = a.confidence || 'نامشخص';
+
+  const proList = document.getElementById('proList');
+  proList.innerHTML = '';
+  const pros = data.matchingProfessionals || [];
+  document.getElementById('noProMsg').style.display = pros.length ? 'none' : 'block';
+  pros.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'pro-card';
+    div.innerHTML = `
+      <div class="name">✅ ${p.name} ${p.business_name ? '(' + p.business_name + ')' : ''}</div>
+      <div class="specs">تخصص: ${(p.specialties || []).join('، ')} — شهر: ${p.city}</div>
+      <button class="btn btn-outline" onclick="openMockModal('چت')">💬 چت با تعمیرکار</button>
+      <button class="btn btn-outline" onclick="openMockModal('تماس')">📞 تماس با تعمیرکار</button>
+    `;
+    proList.appendChild(div);
+  });
+
+  const d = data.debug || {};
+  document.getElementById('debugCard').style.display = 'block';
+  document.getElementById('debugBox').textContent =
+`📷 تصویر دریافت شد: ${d.imageReceived ? 'YES' : 'NO'}
+🎤 صدا دریافت شد: ${d.audioReceived ? 'YES' : 'NO'}
+💬 متن دریافت شد: ${d.textReceived ? 'YES' : 'NO'}
+${d.transcribedVoiceText ? '📝 متن استخراج‌شده از صدا: ' + d.transcribedVoiceText : ''}
+🤖 AI Device: ${a.device_type}
+🤖 Required Profession: ${a.required_profession}
+📍 City: ${d.city}
+👨‍🔧 Matching Professionals: ${d.matchingCount}
+❌ Filtered Professionals: ${d.filteredCount}`;
+}
+
+// ---------- Modal چت/تماس ----------
+function openMockModal(kind) {
+  document.getElementById('mockModalText').textContent = 'این قابلیت (' + kind + ') در نسخه اصلی فعال خواهد شد.';
+  document.getElementById('mockModal').style.display = 'flex';
+}
+function closeMockModal() { document.getElementById('mockModal').style.display = 'none'; }
+
+// ---------- ثبت‌نام تعمیرکار ----------
+async function registerProfessional() {
+  const name = document.getElementById('regName').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const city = document.getElementById('regCity').value;
+  const businessName = document.getElementById('regBusiness').value.trim();
+  const specialties = Array.from(document.querySelectorAll('.profChk:checked')).map(c => c.value);
+
+  const statusEl = document.getElementById('regStatus');
+  if (!name || specialties.length === 0) {
+    statusEl.textContent = 'نام و حداقل یک تخصص لازم است.';
+    statusEl.style.color = '#a12727';
+    return;
+  }
+  statusEl.textContent = '⏳ در حال ثبت...';
+  statusEl.style.color = '#666';
+
+  try {
+    const resp = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ action: 'register', name, phone, city, businessName, specialties })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    statusEl.textContent = '✅ ثبت شد. از همین الان توی جستجوهای بعدی دیده می‌شه.';
+    statusEl.style.color = '#256b25';
+    document.getElementById('regName').value = '';
+    document.getElementById('regPhone').value = '';
+    document.getElementById('regBusiness').value = '';
+    document.querySelectorAll('.profChk:checked').forEach(c => c.checked = false);
+  } catch (err) {
+    statusEl.textContent = '❌ خطا: ' + err.message;
+    statusEl.style.color = '#a12727';
+  }
+}
+</script>
+
+</body>
+</html>
