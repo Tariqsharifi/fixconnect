@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>پنل تعمیرکار (آزمایشی)</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Tahoma, sans-serif; background: #f5f3f0; margin: 0; padding: 16px; color: #2a2a2a; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: #777; font-size: 13px; margin-bottom: 20px; }
+  .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  select { width: 100%; border: 1px solid #ddd; border-radius: 10px; padding: 10px; font-size: 15px; }
+  .conv-item { border: 1px solid #e5e0da; border-radius: 10px; padding: 10px; margin-bottom: 8px; cursor: pointer; }
+  .conv-item .cid { font-size: 12px; color: #888; }
+  .conv-item .last { font-size: 14px; margin-top: 4px; }
+  .conv-item.active { border-color: #6b3f4d; background: #faf6f7; }
+  #chatMessages { max-height: 320px; overflow-y: auto; background: #f8f7f5; border-radius: 10px; padding: 10px; font-size: 14px; margin-bottom: 8px; }
+  input[type=text] { width: 100%; border: 1px solid #ddd; border-radius: 10px; padding: 10px; font-size: 15px; }
+  .btn { padding: 10px 16px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn-plum { background: #6b3f4d; color: #fff; }
+</style>
+</head>
+<body>
+
+<h1>👨‍🔧 پنل تعمیرکار (آزمایشی)</h1>
+<div class="sub">این صفحه فقط برای تست است — انتخاب کن کدوم تعمیرکار هستی و به مشتری‌ها جواب بده.</div>
+
+<script>
+  const SUPABASE_FUNCTION_URL = "https://jtkjgmpotablnmcbrjkn.supabase.co/functions/v1/ai-test-lab-repair";
+  const SUPABASE_ANON_KEY = "sb_publishable_PM2ydrpkgoM9yQU4uMUeRg_H3cvHQp3";
+</script>
+
+<div class="card">
+  <label style="font-size:13px;color:#666">من این تعمیرکار هستم:</label>
+  <select id="proSelect" onchange="onProfessionalChange()"><option>در حال بارگذاری...</option></select>
+</div>
+
+<div class="card" id="convCard" style="display:none">
+  <h3>مکالمات</h3>
+  <div id="convList"></div>
+</div>
+
+<div class="card" id="chatCard" style="display:none">
+  <h3 id="chatTitle">گفتگو</h3>
+  <div id="chatMessages"></div>
+  <div style="display:flex; gap:6px">
+    <input type="text" id="chatInput" placeholder="پاسخ...">
+    <button class="btn btn-plum" onclick="sendReply()">ارسال</button>
+  </div>
+</div>
+
+<script>
+let professionals = [];
+let currentProfessionalId = null;
+let currentCustomerId = null;
+let convPollTimer = null, chatPollTimer = null;
+
+async function callApi(payload) {
+  const resp = await fetch(SUPABASE_FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+    body: JSON.stringify(payload)
+  });
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+async function loadProfessionals() {
+  try {
+    const data = await callApi({ action: 'listProfessionals' });
+    professionals = data.professionals || [];
+    const sel = document.getElementById('proSelect');
+    sel.innerHTML = professionals.map(p => `<option value="${p.id}">${p.name} — ${(p.specialties||[]).join('،')}</option>`).join('');
+    if (professionals.length) onProfessionalChange();
+  } catch (err) {
+    document.getElementById('proSelect').innerHTML = '<option>خطا: ' + err.message + '</option>';
+  }
+}
+loadProfessionals();
+
+function onProfessionalChange() {
+  currentProfessionalId = document.getElementById('proSelect').value;
+  document.getElementById('convCard').style.display = 'block';
+  document.getElementById('chatCard').style.display = 'none';
+  loadConversations();
+  clearInterval(convPollTimer);
+  convPollTimer = setInterval(loadConversations, 5000);
+}
+
+async function loadConversations() {
+  try {
+    const data = await callApi({ action: 'getConversations', professionalId: currentProfessionalId });
+    const list = document.getElementById('convList');
+    if (!data.conversations.length) {
+      list.innerHTML = '<div style="color:#999;font-size:14px">هنوز مشتری‌ای پیام نداده.</div>';
+      return;
+    }
+    list.innerHTML = data.conversations.map(c => `
+      <div class="conv-item ${c.customer_id === currentCustomerId ? 'active' : ''}" onclick="openConversation('${c.customer_id}')">
+        <div class="cid">${c.customer_id}</div>
+        <div class="last">${c.sender === 'professional' ? 'من: ' : ''}${c.message}</div>
+      </div>
+    `).join('');
+  } catch (err) {
+    document.getElementById('convList').textContent = 'خطا: ' + err.message;
+  }
+}
+
+function openConversation(customerId) {
+  currentCustomerId = customerId;
+  document.getElementById('chatCard').style.display = 'block';
+  document.getElementById('chatTitle').textContent = 'گفتگو با ' + customerId;
+  loadMessages();
+  clearInterval(chatPollTimer);
+  chatPollTimer = setInterval(loadMessages, 4000);
+}
+
+async function loadMessages() {
+  if (!currentCustomerId) return;
+  try {
+    const data = await callApi({ action: 'getMessages', professionalId: currentProfessionalId, customerId: currentCustomerId });
+    const box = document.getElementById('chatMessages');
+    box.innerHTML = data.messages.map(m => `
+      <div style="margin-bottom:8px; text-align:${m.sender === 'professional' ? 'left' : 'right'}">
+        <span style="display:inline-block; padding:6px 10px; border-radius:10px; background:${m.sender === 'professional' ? '#6b3f4d' : '#eee'}; color:${m.sender === 'professional' ? '#fff' : '#333'}">
+          ${m.message}
+        </span>
+      </div>
+    `).join('');
+    box.scrollTop = box.scrollHeight;
+  } catch (err) {
+    document.getElementById('chatMessages').textContent = 'خطا: ' + err.message;
+  }
+}
+
+async function sendReply() {
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if (!message || !currentCustomerId) return;
+  input.value = '';
+  try {
+    await callApi({ action: 'sendMessage', professionalId: currentProfessionalId, customerId: currentCustomerId, sender: 'professional', message });
+    loadMessages();
+    loadConversations();
+  } catch (err) {
+    alert('خطا در ارسال: ' + err.message);
+  }
+}
+</script>
+
+</body>
+</html>
