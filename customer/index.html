@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — مشتری</title>
+<link rel="manifest" href="/customer/manifest.json" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Tahoma, sans-serif;
+    background: #f4f6f8;
+    padding-bottom: 76px;
+  }
+  header {
+    background: #1a73e8; color: #fff;
+    padding: 16px 18px 20px;
+    border-radius: 0 0 20px 20px;
+  }
+  header .top-row { display: flex; justify-content: space-between; align-items: center; }
+  header .brand { font-weight: 800; font-size: 18px; }
+  header .greeting { font-size: 14px; opacity: 0.9; margin-top: 4px; }
+  #logout-btn { background: rgba(255,255,255,0.18); border: none; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 20px; }
+
+  main { padding: 18px; }
+
+  .question { text-align: center; font-size: 17px; font-weight: 700; margin: 10px 0 16px; color: #222; }
+
+  .action-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;
+  }
+  .action-card {
+    background: #fff; border-radius: 16px; padding: 20px 10px;
+    text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    border: none; cursor: pointer;
+  }
+  .action-card .icon { font-size: 28px; margin-bottom: 8px; }
+  .action-card .label { font-size: 14px; font-weight: 600; color: #333; }
+
+  .diagnose-btn {
+    width: 100%; padding: 15px; border: none; border-radius: 14px;
+    background: #1a73e8; color: #fff; font-size: 16px; font-weight: 700;
+    margin-bottom: 24px; cursor: pointer;
+  }
+
+  .quick-links { display: flex; flex-direction: column; gap: 10px; }
+  .quick-link {
+    background: #fff; border-radius: 14px; padding: 14px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); text-decoration: none; color: #222;
+  }
+  .quick-link .ql-title { font-size: 14px; font-weight: 600; }
+  .quick-link .arrow { color: #999; }
+
+  nav.bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #fff; border-top: 1px solid #eee;
+    display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  }
+  nav.bottom-nav button {
+    background: none; border: none; font-size: 11px; color: #888;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  nav.bottom-nav button.active { color: #1a73e8; font-weight: 700; }
+  nav.bottom-nav .nav-icon { font-size: 20px; }
+
+  #loading-screen {
+    position: fixed; inset: 0; background: #f4f6f8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #888; z-index: 999;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <div class="top-row">
+    <div>
+      <div class="brand">FixConnect</div>
+      <div class="greeting" id="greeting">سلام!</div>
+    </div>
+    <button id="logout-btn">خروج</button>
+  </div>
+</header>
+
+<main>
+  <div class="question">چه مشکلی دارید؟</div>
+
+  <div class="action-grid">
+    <button class="action-card" data-mode="photo">
+      <div class="icon">📷</div>
+      <div class="label">عکس بگیر</div>
+    </button>
+    <button class="action-card" data-mode="voice">
+      <div class="icon">🎤</div>
+      <div class="label">توضیح بده</div>
+    </button>
+    <button class="action-card" data-mode="text">
+      <div class="icon">💬</div>
+      <div class="label">بنویس</div>
+    </button>
+    <button class="action-card" data-mode="video">
+      <div class="icon">🎥</div>
+      <div class="label">فیلم بگیر</div>
+    </button>
+  </div>
+
+  <button class="diagnose-btn" id="diagnose-btn">🔍 تشخیص مشکل</button>
+
+  <div class="quick-links">
+    <a class="quick-link" href="/customer/requests.html">
+      <span class="ql-title">📋 درخواست‌های من</span>
+      <span class="arrow">‹</span>
+    </a>
+    <a class="quick-link" href="/customer/devices.html">
+      <span class="ql-title">🧰 وسایل من</span>
+      <span class="arrow">‹</span>
+    </a>
+    <a class="quick-link" href="/customer/nearby.html">
+      <span class="ql-title">📍 تعمیرکاران نزدیک</span>
+      <span class="arrow">‹</span>
+    </a>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <button class="active">
+    <div class="nav-icon">🏠</div>
+    خانه
+  </button>
+  <button onclick="location.href='/customer/requests.html'">
+    <div class="nav-icon">📋</div>
+    درخواست‌ها
+  </button>
+  <button onclick="location.href='/customer/devices.html'">
+    <div class="nav-icon">🧰</div>
+    وسایل
+  </button>
+  <button onclick="location.href='/customer/profile.html'">
+    <div class="nav-icon">👤</div>
+    پروفایل
+  </button>
+</nav>
+
+<script type="module">
+  import { requireRole, logout } from "../shared/auth.js";
+
+  const profile = await requireRole("customer", "/index.html");
+  if (profile) {
+    document.getElementById("greeting").textContent =
+      profile.full_name ? `سلام، ${profile.full_name}` : "سلام!";
+    document.getElementById("loading-screen").style.display = "none";
+  }
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await logout();
+    window.location.href = "/index.html";
+  });
+
+  // Each mode card + the main diagnose button both go to the same
+  // "new request" flow; the mode just pre-selects which input tab
+  // opens first. Built in the next file (customer/new-request.html).
+  document.querySelectorAll(".action-card").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      window.location.href = `/customer/new-request.html?mode=${btn.dataset.mode}`;
+    });
+  });
+
+  document.getElementById("diagnose-btn").addEventListener("click", () => {
+    window.location.href = "/customer/new-request.html";
+  });
+</script>
+
+</body>
+</html>
