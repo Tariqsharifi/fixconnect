@@ -87,7 +87,7 @@ export async function getCurrentProfile() {
 
 // Guards a page: if not logged in, or logged in with the wrong role,
 // redirect to loginUrl. Call this at the top of every panel page.
-export async function requireRole(requiredRole, loginUrl = "/index.html") {
+export async function requireRole(requiredRole, loginUrl = "/fixconnect/index.html") {
   const profile = await getCurrentProfile();
 
   if (!profile) {
