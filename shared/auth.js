@@ -1,14 +1,14 @@
 // shared/auth.js
 //
 // Shared authentication helpers used by all three panels.
-// Handles: applying a Telegram-issued session, getting the current
-// user + role, redirecting based on role, and logging out.
+// Two login methods: Telegram (primary, one-tap) and email/password
+// (fallback, in case Telegram isn't available for the user).
 
 import { supabase, callFunction } from "./supabase-client.js";
 
+// ---------------- Telegram login ----------------
+
 // Call this once the Telegram Login Widget gives you a payload.
-// It exchanges the Telegram data for a real Supabase session and
-// stores it in the browser via supabase-js.
 export async function loginWithTelegram(telegramPayload) {
   const result = await callFunction("telegram-auth", telegramPayload);
 
@@ -24,7 +24,50 @@ export async function loginWithTelegram(telegramPayload) {
   return result.profile; // { id, role, full_name, phone, city, area, is_blocked }
 }
 
-// Returns the logged-in user's profile row, or null if not logged in.
+// ---------------- Email login ----------------
+
+// Simple 3-field signup: name, email, password. No email confirmation
+// step — the person is logged in immediately, to keep friction low.
+export async function signupWithEmail(fullName, email, password) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { full_name: fullName },
+    },
+  });
+
+  if (error) {
+    throw new Error(translateAuthError(error.message));
+  }
+
+  return data;
+}
+
+export async function loginWithEmail(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    throw new Error(translateAuthError(error.message));
+  }
+
+  return data;
+}
+
+function translateAuthError(message) {
+  const map = {
+    "Invalid login credentials": "ایمیل یا رمز عبور اشتباه است",
+    "User already registered": "این ایمیل قبلاً ثبت‌نام کرده — وارد شوید",
+    "Password should be at least 6 characters": "رمز عبور باید حداقل ۶ کاراکتر باشد",
+  };
+  return map[message] || "خطایی رخ داد، دوباره تلاش کنید";
+}
+
+// ---------------- Shared (used by both methods) ----------------
+
 export async function getCurrentProfile() {
   const {
     data: { user },
@@ -43,11 +86,7 @@ export async function getCurrentProfile() {
 }
 
 // Guards a page: if not logged in, or logged in with the wrong role,
-// redirect to loginUrl / homeUrl. Call this at the top of every
-// panel page (customer/professional/admin), right after imports.
-//
-// Example (inside professional/index.html's script):
-//   const profile = await requireRole("professional", "/index.html");
+// redirect to loginUrl. Call this at the top of every panel page.
 export async function requireRole(requiredRole, loginUrl = "/index.html") {
   const profile = await getCurrentProfile();
 
@@ -75,8 +114,6 @@ export async function logout() {
   await supabase.auth.signOut();
 }
 
-// Listen for auth state changes (e.g. token refreshed, signed out
-// in another tab). Optional to use, but handy for keeping UI in sync.
 export function onAuthChange(callback) {
   return supabase.auth.onAuthStateChange((_event, session) => {
     callback(session);
