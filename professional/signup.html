@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — ثبت‌نام متخصص</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 30px; }
+  header { background: #1a73e8; color: #fff; padding: 16px 18px; }
+  header .title { font-weight: 700; font-size: 16px; }
+  header .sub { font-size: 12px; opacity: 0.9; margin-top: 4px; }
+
+  main { padding: 18px; }
+  .section { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .section-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #222; }
+
+  label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; margin-top: 10px; }
+  input, textarea { width: 100%; padding: 11px 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; font-family: inherit; background: #fafafa; }
+  input:focus, textarea:focus { outline: none; border-color: #1a73e8; background: #fff; }
+  textarea { min-height: 70px; resize: vertical; }
+
+  .profession-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .prof-chip { padding: 8px 14px; border-radius: 20px; border: 1px solid #ddd; font-size: 13px; color: #555; background: #fafafa; cursor: pointer; }
+  .prof-chip.selected { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+
+  .suggest-row { margin-top: 12px; }
+  .suggest-toggle { font-size: 12px; color: #1a73e8; background: none; border: none; padding: 0; }
+  #suggest-box { display: none; margin-top: 8px; }
+
+  .submit-btn { width: 100%; padding: 15px; border: none; border-radius: 14px; background: #1a73e8; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .submit-btn:disabled { background: #a9c5f0; }
+  .error { color: #d93025; font-size: 13px; text-align: center; margin-top: 10px; min-height: 16px; }
+
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <div class="title">ثبت‌نام به‌عنوان متخصص</div>
+  <div class="sub">پس از تکمیل فرم، اطلاعاتت برای بررسی ادمین ارسال می‌شود</div>
+</header>
+
+<main>
+  <form id="signup-form">
+    <div class="section">
+      <div class="section-title">اطلاعات کسب‌وکار</div>
+      <label>نام کسب‌وکار / تعمیرگاه</label>
+      <input id="business_name" required placeholder="مثلاً: تعمیرگاه سریع" />
+
+      <label>شماره تماس</label>
+      <input id="phone" required placeholder="09xxxxxxxxx" />
+
+      <label>شهر</label>
+      <input id="city" required placeholder="مثلاً: اهواز" />
+
+      <label>محله / منطقه</label>
+      <input id="area" placeholder="مثلاً: کیانپارس" />
+
+      <label>آدرس</label>
+      <input id="address" placeholder="آدرس دقیق محل کار" />
+
+      <label>ساعات کاری</label>
+      <input id="working_hours" placeholder="مثلاً: ۸ صبح تا ۸ شب" />
+
+      <label>توضیحات</label>
+      <textarea id="description" placeholder="کمی دربارهٔ تجربه و خدماتت بنویس..."></textarea>
+    </div>
+
+    <div class="section">
+      <div class="section-title">تخصص‌ها (حداقل یکی رو انتخاب کن)</div>
+      <div class="profession-list" id="profession-list">
+        <span style="font-size:13px;color:#999">در حال بارگذاری...</span>
+      </div>
+
+      <div class="suggest-row">
+        <button type="button" class="suggest-toggle" id="suggest-toggle">حرفه‌ات توی لیست نیست؟ پیشنهاد بده +</button>
+        <div id="suggest-box">
+          <input id="suggest-input" placeholder="اسم حرفه رو بنویس (مثلاً: تعمیر موبایل)" />
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submit-btn">ثبت‌نام و ارسال برای بررسی</button>
+    <div class="error" id="error-box"></div>
+  </form>
+</main>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { getCurrentProfile } from "../shared/auth.js";
+
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    window.location.href = "/index.html";
+    throw new Error("not logged in");
+  }
+  if (profile.role === "admin") {
+    window.location.href = "/admin/";
+    throw new Error("admin cannot signup as professional");
+  }
+  if (profile.role === "professional") {
+    window.location.href = "/professional/pending.html";
+    throw new Error("already professional");
+  }
+
+  document.getElementById("loading-screen").style.display = "none";
+  if (profile.phone) document.getElementById("phone").value = profile.phone;
+  if (profile.city) document.getElementById("city").value = profile.city;
+  if (profile.area) document.getElementById("area").value = profile.area;
+
+  // ---------------- load professions as selectable chips ----------------
+  const selectedProfessions = new Set();
+  const { data: professions } = await supabase
+    .from("professions")
+    .select("id, name")
+    .eq("is_active", true)
+    .order("sort_order");
+
+  const listEl = document.getElementById("profession-list");
+  if (professions && professions.length) {
+    listEl.innerHTML = "";
+    professions.forEach((p) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "prof-chip";
+      chip.textContent = p.name;
+      chip.addEventListener("click", () => {
+        if (selectedProfessions.has(p.id)) {
+          selectedProfessions.delete(p.id);
+          chip.classList.remove("selected");
+        } else {
+          selectedProfessions.add(p.id);
+          chip.classList.add("selected");
+        }
+      });
+      listEl.appendChild(chip);
+    });
+  } else {
+    listEl.innerHTML = `<span style="font-size:13px;color:#999">فعلاً حرفه‌ای ثبت نشده — از گزینهٔ پیشنهاد زیر استفاده کن</span>`;
+  }
+
+  document.getElementById("suggest-toggle").addEventListener("click", () => {
+    const box = document.getElementById("suggest-box");
+    box.style.display = box.style.display === "block" ? "none" : "block";
+  });
+
+  // ---------------- submit ----------------
+  document.getElementById("signup-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById("error-box");
+    const submitBtn = document.getElementById("submit-btn");
+    errorBox.textContent = "";
+
+    const businessName = document.getElementById("business_name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const city = document.getElementById("city").value.trim();
+    const area = document.getElementById("area").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const workingHours = document.getElementById("working_hours").value.trim();
+    const description = document.getElementById("description").value.trim();
+    const suggestText = document.getElementById("suggest-input").value.trim();
+
+    if (selectedProfessions.size === 0 && !suggestText) {
+      errorBox.textContent = "حداقل یک تخصص انتخاب کن یا یکی پیشنهاد بده";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "در حال ثبت...";
+
+    try {
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ role: "professional", phone, city, area })
+        .eq("id", profile.id);
+      if (profileError) throw new Error("خطا در به‌روزرسانی پروفایل");
+
+      const { error: ppError } = await supabase.from("professional_profiles").insert({
+        profile_id: profile.id,
+        business_name: businessName,
+        address,
+        working_hours: workingHours,
+        description,
+        status: "pending",
+      });
+      if (ppError) throw new Error("خطا در ثبت اطلاعات کسب‌وکار");
+
+      if (selectedProfessions.size > 0) {
+        const rows = [...selectedProfessions].map((profession_id) => ({
+          professional_id: profile.id,
+          profession_id,
+          is_active: true,
+        }));
+        await supabase.from("professional_professions").insert(rows);
+      }
+
+      if (suggestText) {
+        await supabase.from("profession_suggestions").insert({
+          suggested_by: profile.id,
+          suggested_name: suggestText,
+        });
+      }
+
+      window.location.href = "/professional/pending.html";
+    } catch (err) {
+      errorBox.textContent = err.message || "خطایی رخ داد";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "ثبت‌نام و ارسال برای بررسی";
+    }
+  });
+</script>
+
+</body>
+</html>
