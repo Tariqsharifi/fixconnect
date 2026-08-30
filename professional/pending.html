@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — در انتظار تأیید</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: #fff; border-radius: 18px; padding: 32px 24px; text-align: center; max-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+  .icon { font-size: 48px; margin-bottom: 14px; }
+  .title { font-size: 17px; font-weight: 700; color: #222; margin-bottom: 8px; }
+  .desc { font-size: 14px; color: #666; line-height: 1.8; margin-bottom: 20px; }
+  .status-box { background: #fff3e0; color: #b25c00; border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 600; margin-bottom: 20px; }
+  .status-box.rejected { background: #fce8e6; color: #c5221f; }
+  button.logout { background: none; border: 1px solid #ddd; color: #666; padding: 10px 20px; border-radius: 10px; font-size: 13px; }
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<div class="card" id="card" style="display:none">
+  <div class="icon" id="status-icon">⏳</div>
+  <div class="title" id="status-title">در انتظار بررسی</div>
+  <div class="status-box" id="status-box">درخواست ثبت‌نام شما در صف بررسی ادمین قرار دارد</div>
+  <div class="desc" id="status-desc">
+    به‌محض تأیید، اعلان دریافت می‌کنی و می‌تونی وارد پنل متخصص بشی و درخواست‌های مرتبط با تخصصت رو ببینی.
+  </div>
+  <button class="logout" id="logout-btn">خروج از حساب</button>
+</div>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { getCurrentProfile, logout } from "../shared/auth.js";
+
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    window.location.href = "/index.html";
+    throw new Error("not logged in");
+  }
+  if (profile.role !== "professional") {
+    window.location.href = "/index.html";
+    throw new Error("not a professional");
+  }
+
+  const { data: profDetails } = await supabase
+    .from("professional_profiles")
+    .select("status")
+    .eq("profile_id", profile.id)
+    .single();
+
+  document.getElementById("loading-screen").style.display = "none";
+  document.getElementById("card").style.display = "block";
+
+  if (profDetails?.status === "approved") {
+    window.location.href = "/professional/index.html";
+  } else if (profDetails?.status === "rejected") {
+    document.getElementById("status-icon").textContent = "❌";
+    document.getElementById("status-title").textContent = "متأسفانه تأیید نشد";
+    const box = document.getElementById("status-box");
+    box.classList.add("rejected");
+    box.textContent = "درخواست ثبت‌نام شما تأیید نشد";
+    document.getElementById("status-desc").textContent =
+      "برای اطلاعات بیشتر یا ثبت‌نام مجدد با پشتیبانی در تماس باش.";
+  } else if (profDetails?.status === "blocked") {
+    document.getElementById("status-icon").textContent = "🚫";
+    document.getElementById("status-title").textContent = "حساب مسدود شده";
+    const box = document.getElementById("status-box");
+    box.classList.add("rejected");
+    box.textContent = "دسترسی شما مسدود شده است";
+  }
+  // else: stays on the default "pending" view
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await logout();
+    window.location.href = "/index.html";
+  });
+</script>
+
+</body>
+</html>
