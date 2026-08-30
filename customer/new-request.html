@@ -288,20 +288,32 @@
 
     document.getElementById("result-card").scrollIntoView({ behavior: "smooth" });
   }
-
   document.getElementById("confirm-btn").addEventListener("click", async () => {
     if (!currentRequestId) return;
+    const confirmBtn = document.getElementById("confirm-btn");
     const manualProfessionId = document.getElementById("profession-select")?.value || null;
+
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "در حال پیدا کردن متخصص...";
 
     const update = { status: "MATCHING" };
     if (manualProfessionId) update.profession_id = manualProfessionId;
-
     await supabase.from("service_requests").update(update).eq("id", currentRequestId);
 
-    // Matching Engine itself is built in the next phase — for now we
-    // just move the request into MATCHING status so it's ready.
+    try {
+      const matchResult = await callFunction("matching-engine", { request_id: currentRequestId });
+      if (matchResult.count > 0) {
+        alert(`درخواست شما برای ${matchResult.count} متخصص ارسال شد ✓`);
+      } else {
+        alert(matchResult.message || "فعلاً متخصص مناسبی پیدا نشد، به‌محض ثبت‌نام متخصص جدید مطلع می‌شوید.");
+      }
+    } catch (err) {
+      alert("خطا در پیدا کردن متخصص: " + err.message);
+    }
+
     window.location.href = `/customer/requests.html?highlight=${currentRequestId}`;
   });
+
 </script>
 
 </body>
