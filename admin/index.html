@@ -28,24 +28,30 @@
   .filter-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; font-size: 12px; border: 1px solid #ddd; background: #fff; color: #555; }
   .filter-chip.active { background: #111827; color: #fff; border-color: #111827; }
 
-  .pro-card, .sug-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-  .pro-top, .sug-top { display: flex; justify-content: space-between; align-items: center; }
-  .pro-name, .sug-name { font-weight: 700; font-size: 15px; color: #222; }
+  .pro-card, .sug-card, .item-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .pro-top, .sug-top, .item-top { display: flex; justify-content: space-between; align-items: center; }
+  .pro-name, .sug-name, .item-name { font-weight: 700; font-size: 15px; color: #222; }
   .pro-status { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
   .status-pending { background: #fff3e0; color: #b25c00; }
   .status-approved { background: #e6f4ea; color: #1a7a34; }
   .status-rejected { background: #fce8e6; color: #c5221f; }
   .status-blocked { background: #eee; color: #666; }
+  .status-active { background: #e6f4ea; color: #1a7a34; }
+  .status-inactive { background: #eee; color: #888; }
 
-  .pro-detail, .sug-detail { font-size: 13px; color: #555; margin-top: 6px; }
+  .pro-detail, .sug-detail, .item-detail { font-size: 13px; color: #555; margin-top: 6px; }
   .pro-professions { font-size: 12px; color: #888; margin-top: 6px; }
   .action-row { display: flex; gap: 8px; margin-top: 12px; }
   .action-row button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; }
   .btn-approve { background: #1a9c4b; color: #fff; }
   .btn-reject { background: #fff; color: #c5221f; border: 1px solid #c5221f; }
   .btn-block { background: #fff; color: #666; border: 1px solid #ccc; }
+  .btn-toggle { background: #fff; color: #111827; border: 1px solid #ccc; }
 
-  .sug-category-select { width: 100%; padding: 9px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; margin-top: 8px; }
+  .sug-category-select, .add-form select, .add-form input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; margin-top: 8px; }
+  .add-form { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .add-form .form-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #222; }
+  .add-form button { width: 100%; padding: 11px; border: none; border-radius: 10px; background: #111827; color: #fff; font-weight: 700; font-size: 13px; margin-top: 10px; }
 
   .empty { text-align: center; color: #888; margin-top: 40px; font-size: 14px; }
   #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
@@ -64,6 +70,8 @@
   <button class="tab active" data-tab="dashboard">داشبورد</button>
   <button class="tab" data-tab="professionals">متخصص‌ها</button>
   <button class="tab" data-tab="suggestions">پیشنهادها <span class="badge-count" id="sug-count" style="display:none">0</span></button>
+  <button class="tab" data-tab="professions">حرفه‌ها</button>
+  <button class="tab" data-tab="devices">دستگاه‌ها</button>
 </div>
 
 <main id="main-content"></main>
@@ -99,7 +107,9 @@
   async function render() {
     if (currentTab === "dashboard") await renderDashboard();
     else if (currentTab === "professionals") await renderProfessionals();
-    else await renderSuggestions();
+    else if (currentTab === "suggestions") await renderSuggestions();
+    else if (currentTab === "professions") await renderProfessions();
+    else await renderDevices();
   }
 
   // ---------------- Dashboard ----------------
@@ -336,6 +346,164 @@
 
       main.appendChild(card);
     }
+  }
+
+  // ---------------- Professions CRUD ----------------
+  function slugify(text) {
+    return (
+      text.trim().toLowerCase().replace(/[^a-z0-9آ-ی\s-]/g, "").replace(/\s+/g, "-") ||
+      `item-${Date.now()}`
+    ) + "-" + Date.now().toString(36);
+  }
+
+  async function renderProfessions() {
+    main.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const { data: categories } = await supabase
+      .from("profession_categories")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("sort_order");
+
+    const { data: professions } = await supabase
+      .from("professions")
+      .select("id, name, is_active, profession_categories ( name )")
+      .order("sort_order");
+
+    main.innerHTML = `
+      <div class="add-form">
+        <div class="form-title">افزودن حرفهٔ جدید</div>
+        <input id="new-profession-name" placeholder="اسم حرفه (مثلاً: تعمیر موبایل)" />
+        <select id="new-profession-category">
+          <option value="">— بدون دسته —</option>
+          ${(categories ?? []).map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}
+        </select>
+        <input id="new-category-name" placeholder="یا اسم دستهٔ جدید بنویس (اختیاری)" />
+        <button id="add-profession-btn">افزودن</button>
+      </div>
+      <div id="profession-list"></div>
+    `;
+
+    document.getElementById("add-profession-btn").addEventListener("click", async () => {
+      const name = document.getElementById("new-profession-name").value.trim();
+      const newCategoryName = document.getElementById("new-category-name").value.trim();
+      let categoryId = document.getElementById("new-profession-category").value || null;
+
+      if (!name) { alert("اسم حرفه رو بنویس"); return; }
+
+      if (newCategoryName) {
+        const { data: newCat, error: catError } = await supabase
+          .from("profession_categories")
+          .insert({ name: newCategoryName, slug: slugify(newCategoryName), is_active: true })
+          .select()
+          .single();
+        if (catError) { alert("خطا در ساخت دسته: " + catError.message); return; }
+        categoryId = newCat.id;
+      }
+
+      const { error } = await supabase
+        .from("professions")
+        .insert({ name, category_id: categoryId, slug: slugify(name), is_active: true });
+
+      if (error) alert("خطا: " + error.message);
+      renderProfessions();
+    });
+
+    const list = document.getElementById("profession-list");
+    list.innerHTML = "";
+    (professions ?? []).forEach((p) => {
+      const card = document.createElement("div");
+      card.className = "item-card";
+      card.innerHTML = `
+        <div class="item-top">
+          <div class="item-name">${p.name}</div>
+          <span class="pro-status status-${p.is_active ? "active" : "inactive"}">${p.is_active ? "فعال" : "غیرفعال"}</span>
+        </div>
+        <div class="item-detail">دسته: ${p.profession_categories?.name || "—"}</div>
+        <div class="action-row"><button class="btn-toggle">${p.is_active ? "غیرفعال کن" : "فعال کن"}</button></div>
+      `;
+      card.querySelector(".btn-toggle").addEventListener("click", async () => {
+        await supabase.from("professions").update({ is_active: !p.is_active }).eq("id", p.id);
+        renderProfessions();
+      });
+      list.appendChild(card);
+    });
+  }
+
+  // ---------------- Devices CRUD ----------------
+  async function renderDevices() {
+    main.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const [{ data: deviceCategories }, { data: professions }, { data: devices }] = await Promise.all([
+      supabase.from("device_categories").select("id, name").eq("is_active", true).order("sort_order"),
+      supabase.from("professions").select("id, name").eq("is_active", true).order("sort_order"),
+      supabase.from("devices").select("id, name, is_active, device_categories ( name ), professions ( name )").order("name"),
+    ]);
+
+    main.innerHTML = `
+      <div class="add-form">
+        <div class="form-title">افزودن دستگاه جدید</div>
+        <input id="new-device-name" placeholder="اسم دستگاه (مثلاً: مایکروویو)" />
+        <select id="new-device-category">
+          <option value="">— بدون دسته —</option>
+          ${(deviceCategories ?? []).map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}
+        </select>
+        <input id="new-device-category-name" placeholder="یا اسم دستهٔ جدید بنویس (اختیاری)" />
+        <select id="new-device-profession">
+          <option value="">— حرفهٔ مرتبط رو انتخاب کن —</option>
+          ${(professions ?? []).map((p) => `<option value="${p.id}">${p.name}</option>`).join("")}
+        </select>
+        <button id="add-device-btn">افزودن</button>
+      </div>
+      <div id="device-list"></div>
+    `;
+
+    document.getElementById("add-device-btn").addEventListener("click", async () => {
+      const name = document.getElementById("new-device-name").value.trim();
+      const newCategoryName = document.getElementById("new-device-category-name").value.trim();
+      let categoryId = document.getElementById("new-device-category").value || null;
+      const professionId = document.getElementById("new-device-profession").value || null;
+
+      if (!name) { alert("اسم دستگاه رو بنویس"); return; }
+      if (!professionId) { alert("حرفه مرتبط رو انتخاب کن — بدونش Matching کار نمی‌کنه"); return; }
+
+      if (newCategoryName) {
+        const { data: newCat, error: catError } = await supabase
+          .from("device_categories")
+          .insert({ name: newCategoryName, slug: slugify(newCategoryName), is_active: true })
+          .select()
+          .single();
+        if (catError) { alert("خطا در ساخت دسته: " + catError.message); return; }
+        categoryId = newCat.id;
+      }
+
+      const { error } = await supabase
+        .from("devices")
+        .insert({ name, category_id: categoryId, profession_id: professionId, slug: slugify(name), is_active: true });
+
+      if (error) alert("خطا: " + error.message);
+      renderDevices();
+    });
+
+    const list = document.getElementById("device-list");
+    list.innerHTML = "";
+    (devices ?? []).forEach((d) => {
+      const card = document.createElement("div");
+      card.className = "item-card";
+      card.innerHTML = `
+        <div class="item-top">
+          <div class="item-name">${d.name}</div>
+          <span class="pro-status status-${d.is_active ? "active" : "inactive"}">${d.is_active ? "فعال" : "غیرفعال"}</span>
+        </div>
+        <div class="item-detail">دسته: ${d.device_categories?.name || "—"} | حرفه: ${d.professions?.name || "—"}</div>
+        <div class="action-row"><button class="btn-toggle">${d.is_active ? "غیرفعال کن" : "فعال کن"}</button></div>
+      `;
+      card.querySelector(".btn-toggle").addEventListener("click", async () => {
+        await supabase.from("devices").update({ is_active: !d.is_active }).eq("id", d.id);
+        renderDevices();
+      });
+      list.appendChild(card);
+    });
   }
 
   render();
