@@ -203,12 +203,29 @@
           await supabase.from("request_matches").update({ status: "rejected", responded_at: new Date().toISOString() }).eq("id", match.id);
           loadList();
         });
-      } else {
+         } else {
         const phone = req.profiles?.phone;
         actionContainer.innerHTML = `
           ${phone ? `<a class="call-btn" href="tel:${phone}">📞 تماس با مشتری</a>` : ""}
           <a class="call-btn" style="background:#1a1a2e;margin-top:6px" href="/professional/chat.html?request=${req.id}">💬 چت</a>
+          <button class="accept-btn" style="width:100%;margin-top:8px" id="complete-btn-${req.id}">✅ اتمام کار</button>
         `;
+
+        actionContainer.querySelector(`#complete-btn-${req.id}`).addEventListener("click", async () => {
+          if (!confirm("مطمئنی این کار تکمیل شده؟")) return;
+
+          await supabase.from("service_requests").update({ status: "COMPLETED" }).eq("id", req.id);
+
+          await supabase.from("notifications").insert({
+            user_id: req.customer_id,
+            title: "کار شما تکمیل شد",
+            body: "لطفاً به متخصص امتیاز بدید",
+            type: "request_completed",
+            related_request_id: req.id,
+          });
+
+          loadList();
+        });
       }
 
       listContainer.appendChild(card);
