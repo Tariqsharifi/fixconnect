@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — ثبت درخواست</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 30px; }
+  header { background: #1a73e8; color: #fff; padding: 16px 18px; display: flex; align-items: center; gap: 10px; }
+  header button.back { background: none; border: none; color: #fff; font-size: 20px; }
+  header .title { font-weight: 700; font-size: 16px; }
+
+  main { padding: 18px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; }
+  .tab { flex-shrink: 0; padding: 8px 16px; border-radius: 20px; background: #fff; border: 1px solid #ddd; font-size: 13px; color: #555; }
+  .tab.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+
+  .panel { display: none; background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+  .panel.active { display: block; }
+
+  textarea { width: 100%; min-height: 100px; border: 1px solid #ddd; border-radius: 10px; padding: 12px; font-size: 15px; font-family: inherit; resize: vertical; }
+
+  .capture-btn { width: 100%; padding: 14px; border: 2px dashed #bbb; border-radius: 12px; background: #fafafa; color: #555; font-size: 14px; cursor: pointer; }
+  .preview-img { width: 100%; border-radius: 12px; margin-top: 10px; }
+  video.preview-video { width: 100%; border-radius: 12px; margin-top: 10px; }
+
+  .rec-row { display: flex; align-items: center; gap: 12px; }
+  #record-btn { width: 60px; height: 60px; border-radius: 50%; border: none; background: #d93025; color: #fff; font-size: 22px; }
+  #record-btn.recording { background: #888; }
+  #rec-status { font-size: 13px; color: #666; }
+  audio#audio-preview { width: 100%; margin-top: 10px; }
+
+  .submit-btn { width: 100%; padding: 15px; border: none; border-radius: 14px; background: #1a73e8; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .submit-btn:disabled { background: #a9c5f0; }
+
+  #result-card { display: none; background: #fff; border-radius: 16px; padding: 20px; margin-top: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+  #result-card .row { margin-bottom: 10px; font-size: 14px; }
+  #result-card .row b { color: #333; }
+  .safety-warning { background: #fff3e0; color: #b25c00; padding: 10px 12px; border-radius: 10px; font-size: 13px; margin-top: 10px; }
+  .confirm-btn { width: 100%; padding: 14px; border: none; border-radius: 14px; background: #1a9c4b; color: #fff; font-size: 15px; font-weight: 700; margin-top: 14px; }
+  .manual-select { margin-top: 12px; }
+  select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; }
+
+  #overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; z-index: 999; }
+  .spinner { width: 34px; height: 34px; border: 3px solid #ddd; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="overlay"><div class="spinner"></div><div id="overlay-text">در حال تحلیل...</div></div>
+
+<header>
+  <button class="back" onclick="history.back()">›</button>
+  <div class="title">ثبت درخواست تعمیر</div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab active" data-tab="photo">📷 عکس</button>
+    <button class="tab" data-tab="text">💬 متن</button>
+    <button class="tab" data-tab="voice">🎤 صدا</button>
+    <button class="tab" data-tab="video">🎥 ویدئو</button>
+  </div>
+
+  <div class="panel active" data-panel="photo">
+    <input type="file" accept="image/*" capture="environment" id="photo-input" style="display:none" />
+    <button class="capture-btn" id="photo-btn">برای گرفتن یا انتخاب عکس بزن</button>
+    <img id="photo-preview" class="preview-img" style="display:none" />
+  </div>
+
+  <div class="panel" data-panel="text">
+    <textarea id="text-input" placeholder="مشکل وسیله‌ات رو اینجا توضیح بده..."></textarea>
+  </div>
+
+  <div class="panel" data-panel="voice">
+    <div class="rec-row">
+      <button id="record-btn">🎤</button>
+      <div id="rec-status">برای ضبط صدا بزن</div>
+    </div>
+    <audio id="audio-preview" controls style="display:none"></audio>
+  </div>
+
+  <div class="panel" data-panel="video">
+    <input type="file" accept="video/*" capture="environment" id="video-input" style="display:none" />
+    <button class="capture-btn" id="video-btn">برای گرفتن یا انتخاب ویدئو بزن</button>
+    <video id="video-preview" class="preview-video" controls style="display:none"></video>
+  </div>
+
+  <button class="submit-btn" id="submit-btn">🔍 تشخیص مشکل</button>
+
+  <div id="result-card">
+    <div class="row"><b>وسیله:</b> <span id="r-device">—</span></div>
+    <div class="row"><b>مشکل احتمالی:</b> <span id="r-problems">—</span></div>
+    <div class="row"><b>اطمینان:</b> <span id="r-confidence">—</span></div>
+    <div class="row" id="r-answer-row"><span id="r-answer"></span></div>
+    <div id="r-safety" class="safety-warning" style="display:none"></div>
+
+    <div class="manual-select" id="manual-select" style="display:none">
+      <p style="font-size:13px;color:#888;margin-bottom:6px">تشخیص مطمئن نبود — لطفاً حرفهٔ مرتبط رو خودت انتخاب کن:</p>
+      <select id="profession-select"><option value="">در حال بارگذاری...</option></select>
+    </div>
+
+    <button class="confirm-btn" id="confirm-btn">تأیید و پیدا کردن متخصص</button>
+  </div>
+</main>
+
+<script type="module">
+  import { supabase, callFunction } from "../shared/supabase-client.js";
+  import { requireRole } from "../shared/auth.js";
+
+  const profile = await requireRole("customer", "/index.html");
+  if (!profile) throw new Error("not authorized");
+
+  // ---------------- tabs ----------------
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.querySelector(`.panel[data-panel="${tab.dataset.tab}"]`).classList.add("active");
+    });
+  });
+
+  const params = new URLSearchParams(location.search);
+  const initialMode = params.get("mode");
+  if (initialMode && document.querySelector(`.tab[data-tab="${initialMode}"]`)) {
+    document.querySelector(`.tab[data-tab="${initialMode}"]`).click();
+  }
+
+  // ---------------- photo ----------------
+  let photoFile = null;
+  document.getElementById("photo-btn").addEventListener("click", () => document.getElementById("photo-input").click());
+  document.getElementById("photo-input").addEventListener("change", (e) => {
+    photoFile = e.target.files[0];
+    if (!photoFile) return;
+    const url = URL.createObjectURL(photoFile);
+    const img = document.getElementById("photo-preview");
+    img.src = url;
+    img.style.display = "block";
+  });
+
+  // ---------------- video ----------------
+  let videoFile = null;
+  document.getElementById("video-btn").addEventListener("click", () => document.getElementById("video-input").click());
+  document.getElementById("video-input").addEventListener("change", (e) => {
+    videoFile = e.target.files[0];
+    if (!videoFile) return;
+    const url = URL.createObjectURL(videoFile);
+    const v = document.getElementById("video-preview");
+    v.src = url;
+    v.style.display = "block";
+  });
+
+  // ---------------- voice ----------------
+  let mediaRecorder, audioChunks = [], audioBlob = null, isRecording = false;
+  document.getElementById("record-btn").addEventListener("click", async () => {
+    const btn = document.getElementById("record-btn");
+    const status = document.getElementById("rec-status");
+
+    if (!isRecording) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const audioEl = document.getElementById("audio-preview");
+        audioEl.src = URL.createObjectURL(audioBlob);
+        audioEl.style.display = "block";
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      btn.classList.add("recording");
+      status.textContent = "در حال ضبط... برای پایان بزن";
+    } else {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach((t) => t.stop());
+      isRecording = false;
+      btn.classList.remove("recording");
+      status.textContent = "ضبط شد ✓";
+    }
+  });
+
+  // ---------------- helpers ----------------
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+  function blobToBase64(blob) {
+    return fileToBase64(blob);
+  }
+
+  async function uploadMedia(requestId, file, type, folder) {
+    const path = `${requestId}/${folder}/${Date.now()}-${file.name || "audio.webm"}`;
+    const { error } = await supabase.storage.from("request-media").upload(path, file);
+    if (error) { console.error(error); return; }
+    await supabase.from("request_media").insert({ request_id: requestId, type, storage_path: path });
+  }
+
+  // ---------------- submit ----------------
+  let currentRequestId = null;
+
+  document.getElementById("submit-btn").addEventListener("click", async () => {
+    const overlay = document.getElementById("overlay");
+    const submitBtn = document.getElementById("submit-btn");
+    const text = document.getElementById("text-input").value.trim();
+
+    if (!photoFile && !text && !audioBlob && !videoFile) {
+      alert("لطفاً حداقل یکی از موارد (عکس، متن، صدا یا ویدئو) رو وارد کن");
+      return;
+    }
+
+    submitBtn.disabled = true;
+    overlay.style.display = "flex";
+    document.getElementById("overlay-text").textContent = "در حال ثبت درخواست...";
+
+    try {
+      const { data: request, error: reqError } = await supabase
+        .from("service_requests")
+        .select()
+        .insert({ customer_id: profile.id, description: text || null, city: profile.city, area: profile.area, status: "NEW" })
+        .select()
+        .single();
+
+      if (reqError || !request) throw new Error("خطا در ثبت درخواست");
+      currentRequestId = request.id;
+
+      const uploads = [];
+      if (photoFile) uploads.push(uploadMedia(request.id, photoFile, "image", "images"));
+      if (audioBlob) uploads.push(uploadMedia(request.id, audioBlob, "audio", "audio"));
+      if (videoFile) uploads.push(uploadMedia(request.id, videoFile, "video", "video"));
+      await Promise.all(uploads);
+
+      document.getElementById("overlay-text").textContent = "در حال تحلیل هوشمند...";
+
+      const body = { request_id: request.id, text };
+      if (photoFile) {
+        body.image_base64 = await fileToBase64(photoFile);
+        body.image_mime = photoFile.type;
+      }
+      if (audioBlob) {
+        body.audio_base64 = await blobToBase64(audioBlob);
+        body.audio_mime = "audio/webm";
+      }
+
+      const result = await callFunction("ai-service", body);
+      showResult(result);
+    } catch (err) {
+      alert(err.message || "خطایی رخ داد");
+    } finally {
+      overlay.style.display = "none";
+      submitBtn.disabled = false;
+    }
+  });
+
+  async function showResult(result) {
+    const analysis = result.analysis;
+    document.getElementById("result-card").style.display = "block";
+    document.getElementById("r-device").textContent = analysis.device_type || "تشخیص داده نشد";
+    document.getElementById("r-problems").textContent = (analysis.possible_problems || []).join("، ") || "—";
+    document.getElementById("r-confidence").textContent =
+      { high: "بالا", medium: "متوسط", low: "پایین" }[analysis.confidence] || "—";
+    document.getElementById("r-answer").textContent = analysis.customer_answer || "";
+
+    if (analysis.safety_warning) {
+      const el = document.getElementById("r-safety");
+      el.style.display = "block";
+      el.textContent = "⚠️ " + analysis.safety_warning;
+    }
+
+    if (result.needs_manual_selection) {
+      document.getElementById("manual-select").style.display = "block";
+      const { data: professions } = await supabase.from("professions").select("id, name").eq("is_active", true);
+      const select = document.getElementById("profession-select");
+      if (professions && professions.length) {
+        select.innerHTML = professions.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
+      } else {
+        select.innerHTML = `<option value="">فعلاً حرفه‌ای ثبت نشده</option>`;
+      }
+    }
+
+    document.getElementById("result-card").scrollIntoView({ behavior: "smooth" });
+  }
+
+  document.getElementById("confirm-btn").addEventListener("click", async () => {
+    if (!currentRequestId) return;
+    const manualProfessionId = document.getElementById("profession-select")?.value || null;
+
+    const update = { status: "MATCHING" };
+    if (manualProfessionId) update.profession_id = manualProfessionId;
+
+    await supabase.from("service_requests").update(update).eq("id", currentRequestId);
+
+    // Matching Engine itself is built in the next phase — for now we
+    // just move the request into MATCHING status so it's ready.
+    window.location.href = `/customer/requests.html?highlight=${currentRequestId}`;
+  });
+</script>
+
+</body>
+</html>
