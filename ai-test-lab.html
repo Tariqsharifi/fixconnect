@@ -3,132 +3,78 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>آزمایشگاه AI - تست ۲</title>
+<title>آزمایشگاه AI - تست ۳</title>
 <style>
   * { box-sizing: border-box; }
-  body {
-    font-family: -apple-system, Tahoma, sans-serif;
-    background: #f5f3f0;
-    margin: 0;
-    padding: 16px;
-    color: #2a2a2a;
-  }
+  body { font-family: -apple-system, Tahoma, sans-serif; background: #f5f3f0; margin: 0; padding: 16px; color: #2a2a2a; }
   h1 { font-size: 20px; margin-bottom: 4px; }
+  h2.page-title { font-size: 17px; margin: 4px 0 14px; }
   .sub { color: #777; font-size: 13px; margin-bottom: 20px; }
-  .card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 16px;
-    margin-bottom: 14px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .card h3 { font-size: 15px; margin: 0 0 10px; }
+  textarea, select, input[type=text], input[type=tel] {
+    width: 100%; border: 1px solid #ddd; border-radius: 10px; padding: 10px;
+    font-family: inherit; font-size: 15px; margin-top: 4px;
   }
-  .card h2 { font-size: 15px; margin: 0 0 10px; }
-  textarea {
-    width: 100%;
-    min-height: 80px;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    padding: 10px;
-    font-family: inherit;
-    font-size: 15px;
-    resize: vertical;
-  }
+  textarea { min-height: 80px; resize: vertical; }
   input[type=file] { display: none; }
-  .btn {
-    display: inline-block;
-    padding: 10px 16px;
-    border-radius: 10px;
-    border: none;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-left: 6px;
-    margin-top: 6px;
-  }
+  label.field-label { font-size: 13px; color: #666; display: block; margin-top: 10px; }
+  .btn { display: inline-block; padding: 10px 16px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; margin-left: 6px; margin-top: 6px; }
   .btn-plum { background: #6b3f4d; color: #fff; }
   .btn-outline { background: #fff; border: 1px solid #ccc; color: #333; }
   .btn-danger { background: #b23a3a; color: #fff; }
-  .btn-main {
-    display: block;
-    width: 100%;
-    padding: 16px;
-    font-size: 17px;
-    border-radius: 12px;
-    background: #6b3f4d;
-    color: #fff;
-    border: none;
-    font-weight: 700;
-    margin: 10px 0 4px;
-  }
+  .btn-main { display: block; width: 100%; padding: 16px; font-size: 17px; border-radius: 12px; background: #6b3f4d; color: #fff; border: none; font-weight: 700; margin: 10px 0 4px; }
   .btn-main:disabled { background: #b8a3aa; }
   img.preview { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; }
-  audio { width: 100%; margin-top: 10px; }
-  .status-box {
-    text-align: center;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 14px;
-    margin-bottom: 14px;
-    background: #eee;
-  }
+  .status-box { text-align: center; padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 14px; background: #eee; }
   .status-error { background: #fbe4e4; color: #a12727; }
   .status-ok { background: #e5f3e5; color: #256b25; }
-  .result-row { margin-bottom: 12px; }
+  .result-row { margin-bottom: 10px; }
   .result-row .label { font-size: 13px; color: #888; margin-bottom: 3px; }
   .result-row .value { font-size: 15px; }
-  .warning-box {
-    background: #fff3cd;
-    border: 1px solid #e0c56d;
-    color: #6b5300;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 14px;
-  }
-  .inputs-sent {
-    font-size: 12px;
-    color: #666;
-    background: #f0eeeb;
-    padding: 8px 10px;
-    border-radius: 8px;
-    margin-top: 8px;
-  }
-  .full-response {
-    white-space: pre-wrap;
-    font-size: 14px;
-    background: #f8f7f5;
-    border-radius: 8px;
-    padding: 10px;
-  }
-  .rec-dot {
-    display: inline-block;
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: #b23a3a;
-    margin-left: 6px;
-    animation: pulse 1s infinite;
-  }
+  .pro-card { border: 1px solid #e5e0da; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .pro-card .name { font-weight: 700; font-size: 15px; }
+  .pro-card .specs { font-size: 13px; color: #666; margin: 4px 0 8px; }
+  .rec-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #b23a3a; margin-left: 6px; animation: pulse 1s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .debug-box { font-size: 12px; line-height: 1.9; background: #1f1f1f; color: #9be89b; padding: 12px; border-radius: 10px; direction: ltr; text-align: left; white-space: pre-wrap; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .modal-box { background: #fff; border-radius: 14px; padding: 20px; max-width: 320px; text-align: center; }
+  .modal-box button { margin-top: 14px; }
+  .tag { display: inline-block; background: #f0eeeb; border-radius: 20px; padding: 3px 10px; font-size: 12px; margin-left: 4px; }
+  hr.sep { border: none; border-top: 1px solid #e5e0da; margin: 20px 0; }
 </style>
 </head>
 <body>
 
-<h1>🧪 آزمایشگاه AI — تست ۲</h1>
-<div class="sub">عکس + صدا + متن → تحلیل با Gemini → پاسخ متنی و صوتی</div>
+<h1>🧪 آزمایشگاه AI — تست ۳</h1>
+<div class="sub">عکس + صدا + متن → تشخیص وسیله → تعیین حرفه → پیدا کردن تعمیرکار مرتبط از دیتابیس</div>
 
-<!-- ⚠️ CONFIG: مقادیر زیر را با اطلاعات پروژه Supabase خودتان جایگزین کنید -->
+<!-- ⚠️ CONFIG -->
 <script>
-  const SUPABASE_FUNCTION_URL = "https://jtkjgmpotablnmcbrjkn.supabase.co/functions/v1/ai-test-lab-analyze";
-  const SUPABASE_ANON_KEY = "sb_publishable_PM2ydrpkgoM9yQU4uMUeRg_H3cvHQp3";
- const SUPABASE_TTS_URL = "https://jtkjgmpotablnmcbrjkn.supabase.co/functions/v1/ai-test-lab-tts";
+  const SUPABASE_FUNCTION_URL = "https://oprbgrmakaxdsyxftdqb.supabase.co/functions/v1/ai-test-lab-repair";
+  const SUPABASE_TTS_URL = "https://oprbgrmakaxdsyxftdqb.supabase.co/functions/v1/ai-test-lab-tts";
+  const SUPABASE_ANON_KEY = "sb_publishable_nkRUaEuiemv3FlzOHk6bOA_hdK8TqZR";
 </script>
 
+<h2 class="page-title">🔧 وسیله من چه مشکلی دارد؟</h2>
+
 <div class="card">
-  <h2>💬 متن</h2>
-  <textarea id="textInput" placeholder="مشکل را توضیح دهید، مثلاً: یخچال من صدای تق‌تق می‌دهد و خوب سرد نمی‌کند."></textarea>
+  <h3>📍 شهر</h3>
+  <select id="citySelect">
+    <option value="تهران">تهران</option>
+  </select>
+  <div style="font-size:12px;color:#999;margin-top:6px">فعلاً فقط تهران — بعداً می‌شه GPS/محدوده/شعاع خدمات اضافه کرد.</div>
 </div>
 
 <div class="card">
-  <h2>📷 عکس</h2>
+  <h3>💬 متن</h3>
+  <textarea id="textInput" placeholder="مثلاً: یخچال صدای تق‌تق می‌دهد و خوب سرد نمی‌کند."></textarea>
+</div>
+
+<div class="card">
+  <h3>📷 عکس</h3>
   <button class="btn btn-outline" onclick="document.getElementById('imgInput').click()">افزودن عکس (دوربین یا گالری)</button>
   <input type="file" id="imgInput" accept="image/*">
   <img id="imgPreview" class="preview" style="display:none">
@@ -136,63 +82,151 @@
 </div>
 
 <div class="card">
-  <h2>🎤 صدا</h2>
+  <h3>🎤 صدا</h3>
   <button class="btn btn-plum" id="recBtn" onclick="toggleRecording()">🎙️ ضبط توضیح</button>
   <span id="recIndicator" style="display:none"><span class="rec-dot"></span>در حال ضبط...</span>
-  <audio id="audioPlayback" controls style="display:none"></audio>
+  <audio id="audioPlayback" controls style="display:none; width:100%; margin-top:8px"></audio>
   <button class="btn btn-danger" id="removeAudioBtn" style="display:none" onclick="removeAudio()">حذف صدا</button>
 </div>
 
-<button class="btn-main" id="analyzeBtn" onclick="runAnalysis()">🔍 تحلیل با AI</button>
+<button class="btn-main" id="analyzeBtn" onclick="runAnalysis()">🔍 تشخیص و پیدا کردن تعمیرکار</button>
 
 <div id="statusBox" class="status-box" style="display:none"></div>
 
+<!-- ---------- نتیجه: درخواست تعمیر ---------- -->
 <div id="resultCard" class="card" style="display:none">
-  <h2>نتیجه AI</h2>
+  <h3>📬 درخواست تعمیر</h3>
 
-  <div class="result-row">
-    <div class="label">🔎 وسیله شناسایی‌شده</div>
-    <div class="value" id="rDevice">—</div>
-  </div>
-  <div class="result-row">
-    <div class="label">🏷️ برند / مدل</div>
-    <div class="value" id="rBrand">—</div>
-  </div>
-  <div class="result-row">
-    <div class="label">⚠️ مشکل احتمالی</div>
-    <div class="value" id="rIssue">—</div>
-  </div>
-  <div class="result-row">
-    <div class="label">📊 میزان اطمینان</div>
-    <div class="value" id="rConfidence">—</div>
-  </div>
-  <div class="result-row">
-    <div class="label">🛠️ پیشنهاد بررسی</div>
-    <div class="value" id="rSuggestions">—</div>
-  </div>
+  <div class="result-row"><div class="label">وسیله</div><div class="value" id="rDevice">—</div></div>
+  <div class="result-row"><div class="label">برند / مدل</div><div class="value" id="rBrandModel">—</div></div>
+  <div class="result-row"><div class="label">مشکل</div><div class="value" id="rProblem">—</div></div>
+  <div class="result-row"><div class="label">🔧 حرفه موردنیاز</div><div class="value" id="rProfession">—</div></div>
+  <div class="result-row"><div class="label">📊 میزان اطمینان</div><div class="value" id="rConfidence">—</div></div>
 
-  <div id="rSafetyRow" class="result-row" style="display:none">
-    <div class="label">🚨 هشدار ایمنی</div>
-    <div class="warning-box" id="rSafety"></div>
-  </div>
-
-  <div class="result-row">
-    <div class="label">💬 پاسخ کامل AI</div>
-    <div class="full-response" id="rFull">—</div>
-  </div>
-
-  <div class="inputs-sent" id="inputsSentBox"></div>
-
-  <button class="btn btn-plum" id="speakBtn" onclick="speakResult()">🔊 پاسخ را بخوان</button>
+  <button class="btn btn-plum" id="speakBtn" onclick="speakResult()">🔊 خواندن نتیجه</button>
   <button class="btn btn-outline" id="stopSpeakBtn" onclick="stopSpeaking()" style="display:none">⏹️ توقف صدا</button>
-   <audio id="ttsPlayer" controls style="display:none; width:100%; margin-top:8px;"></audio>
+  <audio id="ttsPlayer" controls style="display:none; width:100%; margin-top:8px;"></audio>
+
+  <hr class="sep">
+  <h3>تعمیرکارهای پیدا شده</h3>
+  <div id="proList"></div>
+  <div id="noProMsg" style="display:none;color:#a12727;font-size:14px">هیچ تعمیرکار مرتبطی در این شهر پیدا نشد.</div>
+</div>
+
+<!-- ---------- Debug ---------- -->
+<div id="debugCard" class="card" style="display:none">
+  <h3>📊 Debug / آزمایش</h3>
+  <div class="debug-box" id="debugBox"></div>
+</div>
+
+<hr class="sep">
+
+<!-- ---------- ثبت‌نام تعمیرکار ---------- -->
+<div class="card">
+  <h3>👨‍💼 ثبت‌نام تعمیرکار (شبیه‌سازی)</h3>
+  <label class="field-label">نام</label>
+  <input type="text" id="regName">
+  <label class="field-label">شماره تلفن آزمایشی</label>
+  <input type="tel" id="regPhone">
+  <label class="field-label">شهر</label>
+  <select id="regCity"><option value="تهران">تهران</option></select>
+  <label class="field-label">نام کسب‌وکار (اختیاری)</label>
+  <input type="text" id="regBusiness">
+  <label class="field-label">تخصص‌ها</label>
+  <div id="professionsCheckboxes">در حال بارگذاری لیست حرفه‌ها...</div>
+  <button class="btn btn-plum" onclick="registerProfessional()" style="margin-top:12px">✅ ثبت</button>
+  <div id="regStatus" style="font-size:13px;margin-top:8px"></div>
+</div>
+
+<!-- ---------- Modal چت واقعی ---------- -->
+<div class="modal-overlay" id="chatModal">
+  <div class="modal-box" style="max-width:360px; width:90%; text-align:right">
+    <div style="font-weight:700; margin-bottom:8px" id="chatModalTitle">چت با تعمیرکار</div>
+    <div id="chatMessages" style="max-height:260px; overflow-y:auto; background:#f8f7f5; border-radius:10px; padding:10px; font-size:14px; margin-bottom:8px"></div>
+    <div style="display:flex; gap:6px">
+      <input type="text" id="chatInput" placeholder="پیام..." style="flex:1; margin-top:0">
+      <button class="btn btn-plum" style="margin-top:0" onclick="sendChatMessage()">ارسال</button>
+    </div>
+    <button class="btn btn-outline" onclick="closeChatModal()" style="margin-top:12px; width:100%">بستن</button>
+  </div>
 </div>
 
 <script>
 let imageBase64 = null, imageMimeType = null;
 let audioBase64 = null, audioMimeType = null;
 let mediaRecorder = null, audioChunks = [];
-let lastFullResponse = "";
+let lastSummaryText = "";
+let currentAudio = null;
+
+async function speakResult() {
+  if (!lastSummaryText) return;
+  stopSpeaking();
+  document.getElementById('speakBtn').textContent = '⏳ در حال آماده‌سازی صدا...';
+  document.getElementById('speakBtn').disabled = true;
+  try {
+    const resp = await fetch(SUPABASE_TTS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ text: lastSummaryText })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    const player = document.getElementById('ttsPlayer');
+    player.src = `data:${data.mimeType};base64,${data.audioBase64}`;
+    player.style.display = 'block';
+    try {
+      await player.play();
+      document.getElementById('speakBtn').style.display = 'none';
+      document.getElementById('stopSpeakBtn').style.display = 'inline-block';
+      currentAudio = player;
+      player.onended = () => {
+        document.getElementById('speakBtn').style.display = 'inline-block';
+        document.getElementById('stopSpeakBtn').style.display = 'none';
+      };
+    } catch (playErr) {
+      document.getElementById('speakBtn').textContent = '🔊 خواندن نتیجه (پلیر پایین را لمس کن ▶️)';
+    }
+  } catch (err) {
+    alert('خطا در تولید صدا: ' + err.message);
+  } finally {
+    if (document.getElementById('speakBtn').textContent === '⏳ در حال آماده‌سازی صدا...') {
+      document.getElementById('speakBtn').textContent = '🔊 خواندن نتیجه';
+    }
+    document.getElementById('speakBtn').disabled = false;
+  }
+}
+
+function stopSpeaking() {
+  const player = document.getElementById('ttsPlayer');
+  player.pause();
+  currentAudio = null;
+  document.getElementById('speakBtn').style.display = 'inline-block';
+  document.getElementById('speakBtn').textContent = '🔊 خواندن نتیجه';
+  document.getElementById('stopSpeakBtn').style.display = 'none';
+}
+
+// ---------- بارگذاری لیست حرفه‌ها برای فرم ثبت‌نام ----------
+async function loadProfessions() {
+  try {
+    const resp = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ action: 'professions' })
+    });
+    const data = await resp.json();
+    const box = document.getElementById('professionsCheckboxes');
+    box.innerHTML = '';
+    (data.professions || []).forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'checkbox-row';
+      row.innerHTML = `<input type="checkbox" value="${p}" class="profChk"> <span>${p}</span>`;
+      box.appendChild(row);
+    });
+  } catch (err) {
+    document.getElementById('professionsCheckboxes').textContent = 'خطا در بارگذاری لیست حرفه‌ها: ' + err.message;
+  }
+}
+loadProfessions();
 
 // ---------- عکس ----------
 document.getElementById('imgInput').addEventListener('change', (e) => {
@@ -205,22 +239,16 @@ document.getElementById('imgInput').addEventListener('change', (e) => {
       const MAX_DIM = 1024;
       let { width, height } = img;
       if (width > MAX_DIM || height > MAX_DIM) {
-        if (width > height) {
-          height = Math.round(height * (MAX_DIM / width));
-          width = MAX_DIM;
-        } else {
-          width = Math.round(width * (MAX_DIM / height));
-          height = MAX_DIM;
-        }
+        if (width > height) { height = Math.round(height * (MAX_DIM / width)); width = MAX_DIM; }
+        else { width = Math.round(width * (MAX_DIM / height)); height = MAX_DIM; }
       }
       const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = width; canvas.height = height;
       canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
       imageMimeType = 'image/jpeg';
-      imageBase64 = compressedDataUrl.split(',')[1];
-      document.getElementById('imgPreview').src = compressedDataUrl;
+      imageBase64 = dataUrl.split(',')[1];
+      document.getElementById('imgPreview').src = dataUrl;
       document.getElementById('imgPreview').style.display = 'block';
       document.getElementById('removeImgBtn').style.display = 'inline-block';
     };
@@ -237,10 +265,7 @@ function removeImage() {
 
 // ---------- صدا ----------
 async function toggleRecording() {
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop();
-    return;
-  }
+  if (mediaRecorder && mediaRecorder.state === 'recording') { mediaRecorder.stop(); return; }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     let mimeType = 'audio/mp4';
@@ -253,13 +278,10 @@ async function toggleRecording() {
       const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/mp4' });
       audioMimeType = blob.type;
       const reader = new FileReader();
-      reader.onload = () => {
-        audioBase64 = reader.result.split(',')[1];
-      };
+      reader.onload = () => { audioBase64 = reader.result.split(',')[1]; };
       reader.readAsDataURL(blob);
-      const url = URL.createObjectURL(blob);
       const player = document.getElementById('audioPlayback');
-      player.src = url;
+      player.src = URL.createObjectURL(blob);
       player.style.display = 'block';
       document.getElementById('removeAudioBtn').style.display = 'inline-block';
       stream.getTracks().forEach(t => t.stop());
@@ -269,9 +291,7 @@ async function toggleRecording() {
     mediaRecorder.start();
     document.getElementById('recIndicator').style.display = 'inline-block';
     document.getElementById('recBtn').textContent = '⏹️ توقف ضبط';
-  } catch (err) {
-    alert('دسترسی به میکروفون ممکن نشد: ' + err.message);
-  }
+  } catch (err) { alert('دسترسی به میکروفون ممکن نشد: ' + err.message); }
 }
 function removeAudio() {
   audioBase64 = null; audioMimeType = null;
@@ -279,7 +299,7 @@ function removeAudio() {
   document.getElementById('removeAudioBtn').style.display = 'none';
 }
 
-// ---------- تحلیل ----------
+// ---------- تحلیل + تطبیق ----------
 function setStatus(text, kind) {
   const box = document.getElementById('statusBox');
   box.style.display = 'block';
@@ -289,40 +309,24 @@ function setStatus(text, kind) {
 
 async function runAnalysis() {
   const text = document.getElementById('textInput').value.trim();
-  if (!text && !imageBase64 && !audioBase64) {
-    alert('حداقل یکی از متن، عکس یا صدا را وارد کنید.');
-    return;
-  }
+  const city = document.getElementById('citySelect').value;
+  if (!text && !imageBase64 && !audioBase64) { alert('حداقل یکی از متن، عکس یا صدا را وارد کنید.'); return; }
+
   document.getElementById('analyzeBtn').disabled = true;
   document.getElementById('resultCard').style.display = 'none';
+  document.getElementById('debugCard').style.display = 'none';
   setStatus('⏳ در حال ارسال...', '');
 
-  const payload = {
-    text: text || null,
-    imageBase64: imageBase64 || null,
-    imageMimeType: imageMimeType || null,
-    audioBase64: audioBase64 || null,
-    audioMimeType: audioMimeType || null
-  };
-
   try {
-    setStatus('⏳ در حال پردازش (تبدیل صدا در صورت وجود)...', '');
+    setStatus('🤖 در حال تحلیل با AI و جستجوی تعمیرکار...', '');
     const resp = await fetch(SUPABASE_FUNCTION_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-      },
-      body: JSON.stringify(payload)
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({
+        action: 'analyze', text: text || null,
+        imageBase64, imageMimeType, audioBase64, audioMimeType, city
+      })
     });
-
-    setStatus('🤖 در حال تحلیل با AI...', '');
-
-    if (!resp.ok) {
-      const errText = await resp.text();
-      throw new Error('خطای سرور: ' + resp.status + ' — ' + errText);
-    }
-
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
     renderResult(data);
@@ -336,94 +340,167 @@ async function runAnalysis() {
 
 function renderResult(data) {
   const a = data.analysis || {};
-  const inputs = data.inputsReceived || {};
-
   document.getElementById('resultCard').style.display = 'block';
-  document.getElementById('rDevice').textContent = a.device || 'تشخیص داده نشد';
-  document.getElementById('rBrand').textContent = a.brand || 'تشخیص داده نشد';
-  document.getElementById('rIssue').textContent = a.problem || '—';
-  document.getElementById('rConfidence').textContent = a.confidence || '—';
-  document.getElementById('rSuggestions').textContent =
-    Array.isArray(a.suggestions) && a.suggestions.length ? a.suggestions.join('، ') : '—';
+  document.getElementById('rDevice').textContent = a.device_type || 'نامشخص';
+  document.getElementById('rBrandModel').textContent = `${a.brand || 'نامشخص'} / ${a.model || 'نامشخص'}`;
+  document.getElementById('rProblem').textContent =
+    (Array.isArray(a.symptoms) && a.symptoms.length ? a.symptoms.join('، ') + ' — ' : '') + (a.possible_problem || '');
+  document.getElementById('rProfession').textContent = a.required_profession || 'نامشخص';
+  document.getElementById('rConfidence').textContent = a.confidence || 'نامشخص';
 
-  const safetyRow = document.getElementById('rSafetyRow');
-  if (a.safetyWarning) {
-    safetyRow.style.display = 'block';
-    document.getElementById('rSafety').textContent = a.safetyWarning;
-  } else {
-    safetyRow.style.display = 'none';
-  }
+  const pros = data.matchingProfessionals || [];
+  lastSummaryText =
+    `وسیلهٔ شناسایی‌شده: ${a.device_type || 'نامشخص'}. ` +
+    `مشکل احتمالی: ${a.possible_problem || 'نامشخص'}. ` +
+    `حرفهٔ موردنیاز: ${a.required_profession || 'نامشخص'}. ` +
+    (pros.length ? `${pros.length} تعمیرکار مرتبط پیدا شد: ${pros.map(p => p.name).join('، ')}.` : 'هیچ تعمیرکار مرتبطی پیدا نشد.');
 
-  lastFullResponse = a.fullText || '';
-  document.getElementById('rFull').textContent = lastFullResponse || '—';
+  const proList = document.getElementById('proList');
+  proList.innerHTML = '';
+  document.getElementById('noProMsg').style.display = pros.length ? 'none' : 'block';
+  pros.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'pro-card';
+    div.innerHTML = `
+      <div class="name">✅ ${p.name} ${p.business_name ? '(' + p.business_name + ')' : ''}</div>
+      <div class="specs">تخصص: ${(p.specialties || []).join('، ')} — شهر: ${p.city}</div>
+      <button class="btn btn-outline" onclick='openChatModal(${JSON.stringify(p.id)}, ${JSON.stringify(p.name)})'>💬 چت با تعمیرکار</button>
+      ${p.phone
+        ? `<a class="btn btn-plum" href="tel:${p.phone}" style="text-decoration:none">📞 تماس با ${p.phone}</a>`
+        : `<button class="btn btn-outline" disabled>📞 شماره ثبت نشده</button>`}
+    `;
+    proList.appendChild(div);
+  });
 
-  // چه ورودی‌هایی واقعاً ارسال شدند (برای تست‌های اجباری)
-  const sentParts = [];
-  if (inputs.text) sentParts.push('💬 متن');
-  if (inputs.image) sentParts.push('📷 عکس');
-  if (inputs.audio) {
-    sentParts.push('🎤 صدا (متن استخراج‌شده: «' + (inputs.transcribedVoiceText || '') + '»)');
-  }
-  document.getElementById('inputsSentBox').textContent =
-    'ورودی‌های ارسال‌شده به AI: ' + (sentParts.length ? sentParts.join(' + ') : 'هیچ‌کدام');
+  const d = data.debug || {};
+  document.getElementById('debugCard').style.display = 'block';
+  document.getElementById('debugBox').textContent =
+`📷 تصویر دریافت شد: ${d.imageReceived ? 'YES' : 'NO'}
+🎤 صدا دریافت شد: ${d.audioReceived ? 'YES' : 'NO'}
+💬 متن دریافت شد: ${d.textReceived ? 'YES' : 'NO'}
+${d.transcribedVoiceText ? '📝 متن استخراج‌شده از صدا: ' + d.transcribedVoiceText : ''}
+🤖 AI Device: ${a.device_type}
+🤖 Required Profession: ${a.required_profession}
+📍 City: ${d.city}
+👨‍🔧 Matching Professionals: ${d.matchingCount}
+❌ Filtered Professionals: ${d.filteredCount}`;
 }
-// ---------- خواندن پاسخ (Gemini TTS) ----------
-let currentAudio = null;
 
-async function speakResult() {
-  if (!lastFullResponse) return;
-  stopSpeaking();
+// ---------- چت واقعی (سمت مشتری) ----------
+function getCustomerId() {
+  let id = localStorage.getItem('ai_test_lab_customer_id');
+  if (!id) {
+    id = 'customer-' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('ai_test_lab_customer_id', id);
+  }
+  return id;
+}
 
-  document.getElementById('speakBtn').textContent = '⏳ در حال آماده‌سازی صدا...';
-  document.getElementById('speakBtn').disabled = true;
+let currentChatProfessionalId = null;
+let chatPollTimer = null;
 
+function openChatModal(professionalId, professionalName) {
+  currentChatProfessionalId = professionalId;
+  document.getElementById('chatModalTitle').textContent = 'چت با ' + professionalName;
+  document.getElementById('chatMessages').innerHTML = 'در حال بارگذاری...';
+  document.getElementById('chatModal').style.display = 'flex';
+  loadChatMessages();
+  clearInterval(chatPollTimer);
+  chatPollTimer = setInterval(loadChatMessages, 4000);
+}
+
+function closeChatModal() {
+  document.getElementById('chatModal').style.display = 'none';
+  clearInterval(chatPollTimer);
+  currentChatProfessionalId = null;
+}
+
+async function loadChatMessages() {
+  if (!currentChatProfessionalId) return;
   try {
-    const resp = await fetch(SUPABASE_TTS_URL, {
+    const resp = await fetch(SUPABASE_FUNCTION_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-      },
-      body: JSON.stringify({ text: lastFullResponse })
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ action: 'getMessages', professionalId: currentChatProfessionalId, customerId: getCustomerId() })
     });
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
-
-    const player = document.getElementById('ttsPlayer');
-    player.src = `data:${data.mimeType};base64,${data.audioBase64}`;
-    player.style.display = 'block';
-
-    try {
-      await player.play();
-      document.getElementById('speakBtn').style.display = 'none';
-      document.getElementById('stopSpeakBtn').style.display = 'inline-block';
-      currentAudio = player;
-      player.onended = () => {
-        document.getElementById('speakBtn').style.display = 'inline-block';
-        document.getElementById('stopSpeakBtn').style.display = 'none';
-      };
-    } catch (playErr) {
-      document.getElementById('speakBtn').textContent = '🔊 پاسخ را بخوان (پلیر پایین را لمس کن ▶️)';
+    const box = document.getElementById('chatMessages');
+    if (!data.messages.length) {
+      box.innerHTML = '<div style="color:#999">هنوز پیامی نیست — اولین پیام رو بفرست.</div>';
+      return;
     }
+    box.innerHTML = data.messages.map(m => `
+      <div style="margin-bottom:8px; text-align:${m.sender === 'customer' ? 'left' : 'right'}">
+        <span style="display:inline-block; padding:6px 10px; border-radius:10px; background:${m.sender === 'customer' ? '#6b3f4d' : '#eee'}; color:${m.sender === 'customer' ? '#fff' : '#333'}">
+          ${m.message}
+        </span>
+      </div>
+    `).join('');
+    box.scrollTop = box.scrollHeight;
   } catch (err) {
-    alert('خطا در تولید صدا: ' + err.message);
-  } finally {
-    if (document.getElementById('speakBtn').textContent === '⏳ در حال آماده‌سازی صدا...') {
-      document.getElementById('speakBtn').textContent = '🔊 پاسخ را بخوان';
-    }
-    document.getElementById('speakBtn').disabled = false;
+    document.getElementById('chatMessages').textContent = 'خطا: ' + err.message;
   }
 }
 
-function stopSpeaking() {
-  const player = document.getElementById('ttsPlayer');
-  player.pause();
-  currentAudio = null;
-  document.getElementById('speakBtn').style.display = 'inline-block';
-  document.getElementById('speakBtn').textContent = '🔊 پاسخ را بخوان';
-  document.getElementById('stopSpeakBtn').style.display = 'none';
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if (!message || !currentChatProfessionalId) return;
+  input.value = '';
+  try {
+    const resp = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({
+        action: 'sendMessage', professionalId: currentChatProfessionalId,
+        customerId: getCustomerId(), sender: 'customer', message
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    loadChatMessages();
+  } catch (err) {
+    alert('خطا در ارسال پیام: ' + err.message);
+  }
 }
 
+// ---------- ثبت‌نام تعمیرکار ----------
+async function registerProfessional() {
+  const name = document.getElementById('regName').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const city = document.getElementById('regCity').value;
+  const businessName = document.getElementById('regBusiness').value.trim();
+  const specialties = Array.from(document.querySelectorAll('.profChk:checked')).map(c => c.value);
+
+  const statusEl = document.getElementById('regStatus');
+  if (!name || specialties.length === 0) {
+    statusEl.textContent = 'نام و حداقل یک تخصص لازم است.';
+    statusEl.style.color = '#a12727';
+    return;
+  }
+  statusEl.textContent = '⏳ در حال ثبت...';
+  statusEl.style.color = '#666';
+
+  try {
+    const resp = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ action: 'register', name, phone, city, businessName, specialties })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    statusEl.textContent = '✅ ثبت شد. از همین الان توی جستجوهای بعدی دیده می‌شه.';
+    statusEl.style.color = '#256b25';
+    document.getElementById('regName').value = '';
+    document.getElementById('regPhone').value = '';
+    document.getElementById('regBusiness').value = '';
+    document.querySelectorAll('.profChk:checked').forEach(c => c.checked = false);
+  } catch (err) {
+    statusEl.textContent = '❌ خطا: ' + err.message;
+    statusEl.style.color = '#a12727';
+  }
+}
 </script>
 
 </body>
