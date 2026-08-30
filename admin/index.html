@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — پنل ادمین</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 30px; }
+  header { background: #111827; color: #fff; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; }
+  header .brand { font-weight: 800; font-size: 16px; }
+  #logout-btn { background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 20px; }
+
+  .tabs { display: flex; overflow-x: auto; background: #fff; border-bottom: 1px solid #eee; }
+  .tab { flex-shrink: 0; padding: 12px 16px; font-size: 13px; color: #777; border-bottom: 2px solid transparent; }
+  .tab.active { color: #111827; font-weight: 700; border-bottom-color: #111827; }
+
+  main { padding: 16px; }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .stat-value { font-size: 22px; font-weight: 800; color: #111827; }
+  .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+  .stat-card.warn .stat-value { color: #b25c00; }
+
+  .prof-filter { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; }
+  .filter-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; font-size: 12px; border: 1px solid #ddd; background: #fff; color: #555; }
+  .filter-chip.active { background: #111827; color: #fff; border-color: #111827; }
+
+  .pro-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .pro-top { display: flex; justify-content: space-between; align-items: center; }
+  .pro-name { font-weight: 700; font-size: 15px; color: #222; }
+  .pro-status { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+  .status-pending { background: #fff3e0; color: #b25c00; }
+  .status-approved { background: #e6f4ea; color: #1a7a34; }
+  .status-rejected { background: #fce8e6; color: #c5221f; }
+  .status-blocked { background: #eee; color: #666; }
+
+  .pro-detail { font-size: 13px; color: #555; margin-top: 6px; }
+  .pro-professions { font-size: 12px; color: #888; margin-top: 6px; }
+  .action-row { display: flex; gap: 8px; margin-top: 12px; }
+  .action-row button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; }
+  .btn-approve { background: #1a9c4b; color: #fff; }
+  .btn-reject { background: #fff; color: #c5221f; border: 1px solid #c5221f; }
+  .btn-block { background: #fff; color: #666; border: 1px solid #ccc; }
+
+  .empty { text-align: center; color: #888; margin-top: 40px; font-size: 14px; }
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <div class="brand">🛠 پنل مدیریت FixConnect</div>
+  <button id="logout-btn">خروج</button>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-tab="dashboard">داشبورد</button>
+  <button class="tab" data-tab="professionals">متخصص‌ها</button>
+</div>
+
+<main id="main-content"></main>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { getCurrentProfile, logout } from "../shared/auth.js";
+
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "admin") {
+    window.location.href = "/index.html";
+    throw new Error("not authorized");
+  }
+
+  document.getElementById("loading-screen").style.display = "none";
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await logout();
+    window.location.href = "/index.html";
+  });
+
+  const main = document.getElementById("main-content");
+  let currentTab = "dashboard";
+
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      currentTab = tab.dataset.tab;
+      render();
+    });
+  });
+
+  async function render() {
+    if (currentTab === "dashboard") await renderDashboard();
+    else await renderProfessionals();
+  }
+
+  // ---------------- Dashboard ----------------
+  async function renderDashboard() {
+    main.innerHTML = `<div class="empty">در حال بارگذاری آمار...</div>`;
+
+    const [
+      customers, professionals, pendingPros, totalRequests,
+      activeRequests, completedRequests, aiUsageTotal, aiUsageFailed, openReports
+    ] = await Promise.all([
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "customer"),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "professional"),
+      supabase.from("professional_profiles").select("profile_id", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("service_requests").select("id", { count: "exact", head: true }),
+      supabase.from("service_requests").select("id", { count: "exact", head: true }).in("status", ["NEW", "ANALYZING", "MATCHING", "SENT", "ACCEPTED", "IN_PROGRESS"]),
+      supabase.from("service_requests").select("id", { count: "exact", head: true }).eq("status", "COMPLETED"),
+      supabase.from("ai_usage").select("id", { count: "exact", head: true }),
+      supabase.from("ai_usage").select("id", { count: "exact", head: true }).eq("status", "failed"),
+      supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "open"),
+    ]);
+
+    main.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${customers.count ?? 0}</div><div class="stat-label">مشتری</div></div>
+        <div class="stat-card"><div class="stat-value">${professionals.count ?? 0}</div><div class="stat-label">متخصص</div></div>
+        <div class="stat-card warn"><div class="stat-value">${pendingPros.count ?? 0}</div><div class="stat-label">در انتظار تأیید</div></div>
+        <div class="stat-card"><div class="stat-value">${totalRequests.count ?? 0}</div><div class="stat-label">کل درخواست‌ها</div></div>
+        <div class="stat-card"><div class="stat-value">${activeRequests.count ?? 0}</div><div class="stat-label">درخواست فعال</div></div>
+        <div class="stat-card"><div class="stat-value">${completedRequests.count ?? 0}</div><div class="stat-label">تکمیل‌شده</div></div>
+        <div class="stat-card"><div class="stat-value">${aiUsageTotal.count ?? 0}</div><div class="stat-label">تحلیل AI</div></div>
+        <div class="stat-card warn"><div class="stat-value">${aiUsageFailed.count ?? 0}</div><div class="stat-label">خطای AI</div></div>
+        <div class="stat-card warn"><div class="stat-value">${openReports.count ?? 0}</div><div class="stat-label">گزارش باز</div></div>
+      </div>
+    `;
+  }
+
+  // ---------------- Professionals ----------------
+  let profFilter = "pending";
+
+  async function renderProfessionals() {
+    main.innerHTML = `
+      <div class="prof-filter">
+        <button class="filter-chip ${profFilter === "pending" ? "active" : ""}" data-f="pending">در انتظار</button>
+        <button class="filter-chip ${profFilter === "approved" ? "active" : ""}" data-f="approved">تأییدشده</button>
+        <button class="filter-chip ${profFilter === "rejected" ? "active" : ""}" data-f="rejected">ردشده</button>
+        <button class="filter-chip ${profFilter === "blocked" ? "active" : ""}" data-f="blocked">مسدود</button>
+      </div>
+      <div id="pro-list"></div>
+    `;
+
+    main.querySelectorAll(".filter-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        profFilter = chip.dataset.f;
+        renderProfessionals();
+      });
+    });
+
+    const list = document.getElementById("pro-list");
+    list.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const { data: pros, error } = await supabase
+      .from("professional_profiles")
+      .select(`
+        profile_id, business_name, address, working_hours, description, status,
+        rating_avg, rating_count,
+        profiles:profile_id ( full_name, phone, city, area ),
+        professional_professions ( professions ( name ) )
+      `)
+      .eq("status", profFilter)
+      .order("profile_id", { ascending: false });
+
+    if (error || !pros || pros.length === 0) {
+      list.innerHTML = `<div class="empty">موردی در این دسته نیست</div>`;
+      return;
+    }
+
+    list.innerHTML = "";
+    for (const p of pros) {
+      const card = document.createElement("div");
+      card.className = "pro-card";
+      const professionNames = (p.professional_professions ?? [])
+        .map((pp) => pp.professions?.name)
+        .filter(Boolean)
+        .join("، ");
+
+      card.innerHTML = `
+        <div class="pro-top">
+          <div class="pro-name">${p.business_name}</div>
+          <span class="pro-status status-${p.status}">${
+            { pending: "در انتظار", approved: "تأییدشده", rejected: "ردشده", blocked: "مسدود" }[p.status]
+          }</span>
+        </div>
+        <div class="pro-detail">👤 ${p.profiles?.full_name || "—"} | 📞 ${p.profiles?.phone || "—"}</div>
+        <div class="pro-detail">📍 ${p.profiles?.city || ""}${p.profiles?.area ? " - " + p.profiles.area : ""}</div>
+        ${p.description ? `<div class="pro-detail">${p.description}</div>` : ""}
+        <div class="pro-professions">تخصص‌ها: ${professionNames || "—"}</div>
+        <div class="action-row" id="actions-${p.profile_id}"></div>
+      `;
+
+      const actions = card.querySelector(`#actions-${p.profile_id}`);
+      if (p.status === "pending") {
+        actions.innerHTML = `<button class="btn-approve">تأیید</button><button class="btn-reject">رد</button>`;
+        actions.querySelector(".btn-approve").addEventListener("click", () => updateStatus(p.profile_id, "approved"));
+        actions.querySelector(".btn-reject").addEventListener("click", () => updateStatus(p.profile_id, "rejected"));
+      } else if (p.status === "approved") {
+        actions.innerHTML = `<button class="btn-block">مسدود کردن</button>`;
+        actions.querySelector(".btn-block").addEventListener("click", () => updateStatus(p.profile_id, "blocked"));
+      } else {
+        actions.innerHTML = `<button class="btn-approve">تأیید مجدد</button>`;
+        actions.querySelector(".btn-approve").addEventListener("click", () => updateStatus(p.profile_id, "approved"));
+      }
+
+      list.appendChild(card);
+    }
+  }
+
+  async function updateStatus(profileId, status) {
+    await supabase
+      .from("professional_profiles")
+      .update({ status, approved_at: status === "approved" ? new Date().toISOString() : null, approved_by: profile.id })
+      .eq("profile_id", profileId);
+
+    await supabase.from("notifications").insert({
+      user_id: profileId,
+      title: status === "approved" ? "ثبت‌نام شما تأیید شد" : status === "rejected" ? "ثبت‌نام شما رد شد" : "حساب شما مسدود شد",
+      body: status === "approved" ? "حالا می‌تونی وارد پنل متخصص بشی و درخواست دریافت کنی" : "",
+      type: status === "approved" ? "professional_approved" : "professional_rejected",
+    });
+
+    renderProfessionals();
+  }
+
+  render();
+</script>
+
+</body>
+</html>
