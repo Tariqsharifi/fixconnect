@@ -134,12 +134,12 @@
       errorBox.textContent = "خطا در دریافت اطلاعات کاربر";
       return;
     }
-    if (profile.role === "admin") {
-      window.location.href = "/admin/";
+     if (profile.role === "admin") {
+      window.location.href = "/fixconnect/admin/";
     } else if (profile.role === "professional") {
-      window.location.href = "/professional/";
+      window.location.href = "/fixconnect/professional/";
     } else {
-      window.location.href = "/customer/";
+      window.location.href = "/fixconnect/customer/";
     }
   }
 
