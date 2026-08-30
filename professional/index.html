@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — پنل متخصص</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 76px; }
+  header { background: #1a1a2e; color: #fff; padding: 16px 18px 20px; border-radius: 0 0 20px 20px; }
+  header .top-row { display: flex; justify-content: space-between; align-items: center; }
+  header .brand { font-weight: 800; font-size: 17px; }
+  header .greeting { font-size: 13px; opacity: 0.85; margin-top: 3px; }
+  #logout-btn { background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 20px; }
+
+  main { padding: 18px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab { flex: 1; padding: 10px; border-radius: 12px; background: #fff; border: 1px solid #ddd; font-size: 13px; color: #555; text-align: center; }
+  .tab.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+  .empty { text-align: center; color: #888; margin-top: 60px; font-size: 14px; }
+
+  .req-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .req-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .req-device { font-weight: 700; font-size: 15px; color: #222; }
+  .req-date { font-size: 11px; color: #999; }
+  .req-location { font-size: 12px; color: #777; margin-bottom: 6px; }
+  .req-symptoms { font-size: 13px; color: #555; margin-bottom: 6px; }
+  .req-safety { font-size: 12px; color: #b25c00; background: #fff3e0; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; }
+
+  .action-row { display: flex; gap: 8px; margin-top: 10px; }
+  .accept-btn, .reject-btn { flex: 1; padding: 11px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; }
+  .accept-btn { background: #1a9c4b; color: #fff; }
+  .reject-btn { background: #fff; color: #c5221f; border: 1px solid #c5221f; }
+
+  .status-tag { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; background: #e6f4ea; color: #1a7a34; }
+  .call-btn { display: block; text-align: center; padding: 11px; border-radius: 10px; background: #1a73e8; color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; margin-top: 8px; }
+
+  nav.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
+  nav.bottom-nav button { background: none; border: none; font-size: 11px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav.bottom-nav button.active { color: #1a1a2e; font-weight: 700; }
+  nav.bottom-nav .nav-icon { font-size: 20px; }
+
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <div class="top-row">
+    <div>
+      <div class="brand">پنل متخصص</div>
+      <div class="greeting" id="greeting">سلام!</div>
+    </div>
+    <button id="logout-btn">خروج</button>
+  </div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab active" data-tab="new">درخواست‌های جدید</button>
+    <button class="tab" data-tab="active">کارهای در حال انجام</button>
+  </div>
+  <div id="list-container"></div>
+</main>
+
+<nav class="bottom-nav">
+  <button class="active"><div class="nav-icon">🏠</div>خانه</button>
+  <button onclick="location.href='/professional/profile.html'"><div class="nav-icon">👤</div>پروفایل</button>
+</nav>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { getCurrentProfile, logout } from "../shared/auth.js";
+
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "professional") {
+    window.location.href = "/index.html";
+    throw new Error("not authorized");
+  }
+
+  const { data: profDetails } = await supabase
+    .from("professional_profiles")
+    .select("status, business_name")
+    .eq("profile_id", profile.id)
+    .single();
+
+  if (profDetails?.status !== "approved") {
+    window.location.href = "/professional/pending.html";
+    throw new Error("not approved yet");
+  }
+
+  document.getElementById("loading-screen").style.display = "none";
+  document.getElementById("greeting").textContent = profDetails.business_name || profile.full_name || "";
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await logout();
+    window.location.href = "/index.html";
+  });
+
+  const listContainer = document.getElementById("list-container");
+  let currentTab = "new";
+
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      currentTab = tab.dataset.tab;
+      loadList();
+    });
+  });
+
+  async function loadList() {
+    listContainer.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const matchStatuses = currentTab === "new" ? ["sent"] : ["accepted"];
+
+    const { data: matches, error } = await supabase
+      .from("request_matches")
+      .select(`
+        id, status, created_at,
+        service_requests (
+          id, description, brand, model, symptoms, possible_problems,
+          safety_warning, city, area, status,
+          customer_id, devices ( name ),
+          profiles:customer_id ( full_name, phone )
+        )
+      `)
+      .eq("professional_id", profile.id)
+      .in("status", matchStatuses)
+      .order("created_at", { ascending: false });
+
+    if (error || !matches || matches.length === 0) {
+      listContainer.innerHTML = `<div class="empty">${currentTab === "new" ? "فعلاً درخواست جدیدی نداری" : "کار در حال انجامی نداری"}</div>`;
+      return;
+    }
+
+    listContainer.innerHTML = "";
+
+    for (const match of matches) {
+      const req = match.service_requests;
+      if (!req) continue;
+
+      const card = document.createElement("div");
+      card.className = "req-card";
+
+      card.innerHTML = `
+        <div class="req-top">
+          <div class="req-device">${req.devices?.name || "دستگاه نامشخص"}</div>
+          ${currentTab === "active" ? `<span class="status-tag">${req.status === "IN_PROGRESS" ? "در حال انجام" : "پذیرفته‌شده"}</span>` : `<span class="req-date">${new Date(match.created_at).toLocaleDateString("fa-IR")}</span>`}
+        </div>
+        <div class="req-location">📍 ${req.city || ""}${req.area ? " - " + req.area : ""}</div>
+        ${req.symptoms ? `<div class="req-symptoms">${req.symptoms}</div>` : ""}
+        ${req.possible_problems?.length ? `<div class="req-symptoms"><b>احتمالات:</b> ${req.possible_problems.join("، ")}</div>` : ""}
+        ${req.safety_warning ? `<div class="req-safety">⚠️ ${req.safety_warning}</div>` : ""}
+        <div class="action-container"></div>
+      `;
+
+      const actionContainer = card.querySelector(".action-container");
+
+      if (currentTab === "new") {
+        actionContainer.innerHTML = `
+          <div class="action-row">
+            <button class="accept-btn">قبول درخواست</button>
+            <button class="reject-btn">رد کردن</button>
+          </div>
+        `;
+
+        actionContainer.querySelector(".accept-btn").addEventListener("click", async () => {
+          await supabase.from("request_matches").update({ status: "accepted", responded_at: new Date().toISOString() }).eq("id", match.id);
+          await supabase.from("service_requests").update({ status: "ACCEPTED" }).eq("id", req.id);
+
+          const { data: existingConv } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("request_id", req.id)
+            .eq("professional_id", profile.id)
+            .maybeSingle();
+
+          if (!existingConv) {
+            await supabase.from("conversations").insert({
+              request_id: req.id,
+              customer_id: req.customer_id,
+              professional_id: profile.id,
+            });
+          }
+
+          await supabase.from("notifications").insert({
+            user_id: req.customer_id,
+            title: "درخواست شما پذیرفته شد",
+            body: `${profDetails.business_name} درخواست شما رو پذیرفت`,
+            type: "request_accepted",
+            related_request_id: req.id,
+          });
+
+          loadList();
+        });
+
+        actionContainer.querySelector(".reject-btn").addEventListener("click", async () => {
+          await supabase.from("request_matches").update({ status: "rejected", responded_at: new Date().toISOString() }).eq("id", match.id);
+          loadList();
+        });
+      } else {
+        const phone = req.profiles?.phone;
+        actionContainer.innerHTML = `
+          ${phone ? `<a class="call-btn" href="tel:${phone}">📞 تماس با مشتری</a>` : ""}
+          <a class="call-btn" style="background:#1a1a2e;margin-top:6px" href="/professional/chat.html?request=${req.id}">💬 چت</a>
+        `;
+      }
+
+      listContainer.appendChild(card);
+    }
+  }
+
+  loadList();
+</script>
+
+</body>
+</html>
