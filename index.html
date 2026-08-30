@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>FixConnect — ورود</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Tahoma, sans-serif;
+    background: #f4f6f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px 22px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+  .logo { text-align: center; font-size: 26px; font-weight: 800; color: #1a73e8; margin-bottom: 4px; }
+  .tagline { text-align: center; color: #666; font-size: 14px; margin-bottom: 24px; }
+  #telegram-login-container { display: flex; justify-content: center; margin-bottom: 18px; min-height: 40px; }
+  .divider { display: flex; align-items: center; gap: 10px; color: #999; font-size: 13px; margin: 18px 0; }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #e3e3e3; }
+  input {
+    width: 100%; padding: 12px 14px; margin-bottom: 10px;
+    border: 1px solid #ddd; border-radius: 10px; font-size: 15px;
+    background: #fafafa;
+  }
+  input:focus { outline: none; border-color: #1a73e8; background: #fff; }
+  button.primary {
+    width: 100%; padding: 13px; border: none; border-radius: 10px;
+    background: #1a73e8; color: #fff; font-size: 15px; font-weight: 600;
+    cursor: pointer; margin-top: 4px;
+  }
+  button.primary:disabled { background: #a9c5f0; }
+  .switch-mode { text-align: center; margin-top: 14px; font-size: 13px; color: #1a73e8; cursor: pointer; }
+  .error { color: #d93025; font-size: 13px; text-align: center; margin-top: 10px; min-height: 16px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">FixConnect</div>
+  <div class="tagline">سریع‌ترین راه پیدا کردن متخصص</div>
+
+  <div id="telegram-login-container">
+    <script async src="https://telegram.org/js/telegram-widget.js?22"
+      data-telegram-login="fixconnect_auth_bot"
+      data-size="large"
+      data-radius="10"
+      data-onauth="onTelegramAuth(user)"
+      data-request-access="write">
+    </script>
+  </div>
+
+  <div class="divider">یا</div>
+
+  <form id="email-form">
+    <input id="full-name" type="text" placeholder="نام و نام‌خانوادگی" style="display:none" />
+    <input id="email" type="email" placeholder="ایمیل" required autocomplete="email" />
+    <input id="password" type="password" placeholder="رمز عبور" required autocomplete="current-password" />
+    <button class="primary" id="submit-btn" type="submit">ورود</button>
+  </form>
+
+  <div class="switch-mode" id="switch-mode">حساب نداری؟ ثبت‌نام کن</div>
+  <div class="error" id="error-box"></div>
+</div>
+
+<script type="module">
+  import { loginWithTelegram, loginWithEmail, signupWithEmail, getCurrentProfile } from "./shared/auth.js";
+
+  const errorBox = document.getElementById("error-box");
+  const nameInput = document.getElementById("full-name");
+  const emailForm = document.getElementById("email-form");
+  const submitBtn = document.getElementById("submit-btn");
+  const switchMode = document.getElementById("switch-mode");
+
+  let isSignup = false;
+
+  switchMode.addEventListener("click", () => {
+    isSignup = !isSignup;
+    nameInput.style.display = isSignup ? "block" : "none";
+    submitBtn.textContent = isSignup ? "ثبت‌نام" : "ورود";
+    switchMode.textContent = isSignup ? "حساب داری؟ وارد شو" : "حساب نداری؟ ثبتنام کن";
+    errorBox.textContent = "";
+  });
+
+  emailForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorBox.textContent = "";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "لطفاً صبر کنید...";
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const fullName = nameInput.value.trim();
+
+    try {
+      if (isSignup) {
+        await signupWithEmail(fullName, email, password);
+      } else {
+        await loginWithEmail(email, password);
+      }
+      await redirectByRole();
+    } catch (err) {
+      errorBox.textContent = err.message;
+      submitBtn.disabled = false;
+      submitBtn.textContent = isSignup ? "ثبت‌نام" : "ورود";
+    }
+  });
+
+  // Called by the Telegram widget after the user confirms in-app
+  window.onTelegramAuth = async (user) => {
+    errorBox.textContent = "";
+    try {
+      await loginWithTelegram(user);
+      await redirectByRole();
+    } catch (err) {
+      errorBox.textContent = err.message;
+    }
+  };
+
+  async function redirectByRole() {
+    const profile = await getCurrentProfile();
+    if (!profile) {
+      errorBox.textContent = "خطا در دریافت اطلاعات کاربر";
+      return;
+    }
+    if (profile.role === "admin") {
+      window.location.href = "/admin/";
+    } else if (profile.role === "professional") {
+      window.location.href = "/professional/";
+    } else {
+      window.location.href = "/customer/";
+    }
+  }
+
+  // If already logged in, skip straight to the right panel
+  (async () => {
+    const profile = await getCurrentProfile();
+    if (profile) await redirectByRole();
+  })();
+</script>
+
+</body>
+</html>
