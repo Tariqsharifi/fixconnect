@@ -12,8 +12,9 @@
   #logout-btn { background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 20px; }
 
   .tabs { display: flex; overflow-x: auto; background: #fff; border-bottom: 1px solid #eee; }
-  .tab { flex-shrink: 0; padding: 12px 16px; font-size: 13px; color: #777; border-bottom: 2px solid transparent; }
+  .tab { flex-shrink: 0; padding: 12px 16px; font-size: 13px; color: #777; border-bottom: 2px solid transparent; white-space: nowrap; }
   .tab.active { color: #111827; font-weight: 700; border-bottom-color: #111827; }
+  .tab .badge-count { background: #c5221f; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-right: 4px; }
 
   main { padding: 16px; }
 
@@ -27,22 +28,24 @@
   .filter-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; font-size: 12px; border: 1px solid #ddd; background: #fff; color: #555; }
   .filter-chip.active { background: #111827; color: #fff; border-color: #111827; }
 
-  .pro-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-  .pro-top { display: flex; justify-content: space-between; align-items: center; }
-  .pro-name { font-weight: 700; font-size: 15px; color: #222; }
+  .pro-card, .sug-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .pro-top, .sug-top { display: flex; justify-content: space-between; align-items: center; }
+  .pro-name, .sug-name { font-weight: 700; font-size: 15px; color: #222; }
   .pro-status { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
   .status-pending { background: #fff3e0; color: #b25c00; }
   .status-approved { background: #e6f4ea; color: #1a7a34; }
   .status-rejected { background: #fce8e6; color: #c5221f; }
   .status-blocked { background: #eee; color: #666; }
 
-  .pro-detail { font-size: 13px; color: #555; margin-top: 6px; }
+  .pro-detail, .sug-detail { font-size: 13px; color: #555; margin-top: 6px; }
   .pro-professions { font-size: 12px; color: #888; margin-top: 6px; }
   .action-row { display: flex; gap: 8px; margin-top: 12px; }
   .action-row button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; }
   .btn-approve { background: #1a9c4b; color: #fff; }
   .btn-reject { background: #fff; color: #c5221f; border: 1px solid #c5221f; }
   .btn-block { background: #fff; color: #666; border: 1px solid #ccc; }
+
+  .sug-category-select { width: 100%; padding: 9px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; margin-top: 8px; }
 
   .empty { text-align: center; color: #888; margin-top: 40px; font-size: 14px; }
   #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
@@ -60,6 +63,7 @@
 <div class="tabs">
   <button class="tab active" data-tab="dashboard">داشبورد</button>
   <button class="tab" data-tab="professionals">متخصص‌ها</button>
+  <button class="tab" data-tab="suggestions">پیشنهادها <span class="badge-count" id="sug-count" style="display:none">0</span></button>
 </div>
 
 <main id="main-content"></main>
@@ -94,7 +98,8 @@
 
   async function render() {
     if (currentTab === "dashboard") await renderDashboard();
-    else await renderProfessionals();
+    else if (currentTab === "professionals") await renderProfessionals();
+    else await renderSuggestions();
   }
 
   // ---------------- Dashboard ----------------
@@ -197,21 +202,21 @@
       const actions = card.querySelector(`#actions-${p.profile_id}`);
       if (p.status === "pending") {
         actions.innerHTML = `<button class="btn-approve">تأیید</button><button class="btn-reject">رد</button>`;
-        actions.querySelector(".btn-approve").addEventListener("click", () => updateStatus(p.profile_id, "approved"));
-        actions.querySelector(".btn-reject").addEventListener("click", () => updateStatus(p.profile_id, "rejected"));
+        actions.querySelector(".btn-approve").addEventListener("click", () => updateProStatus(p.profile_id, "approved"));
+        actions.querySelector(".btn-reject").addEventListener("click", () => updateProStatus(p.profile_id, "rejected"));
       } else if (p.status === "approved") {
         actions.innerHTML = `<button class="btn-block">مسدود کردن</button>`;
-        actions.querySelector(".btn-block").addEventListener("click", () => updateStatus(p.profile_id, "blocked"));
+        actions.querySelector(".btn-block").addEventListener("click", () => updateProStatus(p.profile_id, "blocked"));
       } else {
         actions.innerHTML = `<button class="btn-approve">تأیید مجدد</button>`;
-        actions.querySelector(".btn-approve").addEventListener("click", () => updateStatus(p.profile_id, "approved"));
+        actions.querySelector(".btn-approve").addEventListener("click", () => updateProStatus(p.profile_id, "approved"));
       }
 
       list.appendChild(card);
     }
   }
 
-  async function updateStatus(profileId, status) {
+  async function updateProStatus(profileId, status) {
     await supabase
       .from("professional_profiles")
       .update({ status, approved_at: status === "approved" ? new Date().toISOString() : null, approved_by: profile.id })
@@ -225,6 +230,112 @@
     });
 
     renderProfessionals();
+  }
+
+  // ---------------- Suggestions ----------------
+  async function refreshSuggestionBadge() {
+    const { count } = await supabase
+      .from("profession_suggestions")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    const badge = document.getElementById("sug-count");
+    if (count && count > 0) {
+      badge.style.display = "inline-block";
+      badge.textContent = count;
+    } else {
+      badge.style.display = "none";
+    }
+  }
+  refreshSuggestionBadge();
+
+  async function renderSuggestions() {
+    main.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const { data: suggestions, error } = await supabase
+      .from("profession_suggestions")
+      .select("id, suggested_name, category_hint, status, created_at, profiles:suggested_by ( full_name, phone )")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (error || !suggestions || suggestions.length === 0) {
+      main.innerHTML = `<div class="empty">پیشنهاد جدیدی نیست</div>`;
+      return;
+    }
+
+    const { data: categories } = await supabase
+      .from("profession_categories")
+      .select("id, name")
+      .eq("is_active", true);
+
+    main.innerHTML = "";
+    for (const s of suggestions) {
+      const card = document.createElement("div");
+      card.className = "sug-card";
+      card.innerHTML = `
+        <div class="sug-top">
+          <div class="sug-name">${s.suggested_name}</div>
+          <span class="pro-status status-pending">در انتظار</span>
+        </div>
+        <div class="sug-detail">پیشنهاددهنده: ${s.profiles?.full_name || "—"} | 📞 ${s.profiles?.phone || "—"}</div>
+        <select class="sug-category-select">
+          ${(categories ?? []).map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}
+        </select>
+        <div class="action-row">
+          <button class="btn-approve">تأیید و افزودن به لیست حرفه‌ها</button>
+          <button class="btn-reject">رد</button>
+        </div>
+      `;
+
+      const categorySelect = card.querySelector(".sug-category-select");
+
+      card.querySelector(".btn-approve").addEventListener("click", async () => {
+        const slug = s.suggested_name
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9آ-ی\s-]/g, "")
+          .replace(/\s+/g, "-") || `profession-${Date.now()}`;
+
+        const { data: newProfession, error: profError } = await supabase
+          .from("professions")
+          .insert({
+            category_id: categorySelect.value || null,
+            name: s.suggested_name,
+            slug: `${slug}-${Date.now().toString(36)}`,
+            is_active: true,
+          })
+          .select()
+          .single();
+
+        if (profError) {
+          alert("خطا در ساخت حرفهٔ جدید: " + profError.message);
+          return;
+        }
+
+        await supabase
+          .from("profession_suggestions")
+          .update({
+            status: "approved",
+            resolved_profession_id: newProfession.id,
+            reviewed_by: profile.id,
+            reviewed_at: new Date().toISOString(),
+          })
+          .eq("id", s.id);
+
+        renderSuggestions();
+        refreshSuggestionBadge();
+      });
+
+      card.querySelector(".btn-reject").addEventListener("click", async () => {
+        await supabase
+          .from("profession_suggestions")
+          .update({ status: "rejected", reviewed_by: profile.id, reviewed_at: new Date().toISOString() })
+          .eq("id", s.id);
+        renderSuggestions();
+        refreshSuggestionBadge();
+      });
+
+      main.appendChild(card);
+    }
   }
 
   render();
