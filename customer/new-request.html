@@ -250,9 +250,9 @@
         body.image_base64 = await fileToBase64(photoFile);
         body.image_mime = photoFile.type;
       }
-      if (audioBlob) {
+       if (audioBlob) {
         body.audio_base64 = await blobToBase64(audioBlob);
-        body.audio_mime = "audio/webm";
+        body.audio_mime = audioBlob.type || "audio/mp4";
       }
 
       const result = await callFunction("ai-service", body);
