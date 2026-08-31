@@ -207,7 +207,7 @@
         const phone = req.profiles?.phone;
         actionContainer.innerHTML = `
           ${phone ? `<a class="call-btn" href="tel:${phone}">📞 تماس با مشتری</a>` : ""}
-          <a class="call-btn" style="background:#1a1a2e;margin-top:6px" href="/professional/chat.html?request=${req.id}">💬 چت</a>
+          <a class="call-btn" style="background:#1a1a2e;margin-top:6px" href="/fixconnect/professional/chat.html?request=${req.id}">💬 چت</a>
           <button class="accept-btn" style="width:100%;margin-top:8px" id="complete-btn-${req.id}">✅ اتمام کار</button>
         `;
 
