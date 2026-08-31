@@ -4,7 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>FixConnect — مشتری</title>
-<link rel="manifest" href="/customer/manifest.json" />
+<!-- FIX: was "/customer/manifest.json" — every other path in the app
+     is served under the /fixconnect/ prefix, so this 404'd. -->
+<link rel="manifest" href="/fixconnect/customer/manifest.json" />
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
@@ -112,7 +114,7 @@
 
   <div class="quick-links">
       <a class="quick-link" href="/fixconnect/customer/requests.html">
-      <span class="ql-title">📋 درخواست‌های من</span>
+      <span class="ql-title">📋 درخواستهای من</span>
       <span class="arrow">‹</span>
     </a>
     <a class="quick-link" href="/fixconnect/customer/devices.html">
@@ -134,7 +136,7 @@
   </button>
   <button onclick="location.href='/fixconnect/customer/requests.html'">
     <div class="nav-icon">📋</div>
-    درخواست‌ها
+    درخواستها
   </button>
   <button onclick="location.href='/fixconnect/customer/devices.html'">
     <div class="nav-icon">🧰</div>
@@ -165,7 +167,7 @@
 
   // Each mode card + the main diagnose button both go to the same
   // "new request" flow; the mode just pre-selects which input tab
-  // opens first. Built in the next file (customer/new-request.html).
+  // opens first.
   document.querySelectorAll(".action-card").forEach((btn) => {
     btn.addEventListener("click", () => {
       window.location.href = `/fixconnect/customer/new-request.html?mode=${btn.dataset.mode}`;
