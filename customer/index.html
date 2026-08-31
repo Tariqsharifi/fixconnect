@@ -168,13 +168,14 @@
   // opens first. Built in the next file (customer/new-request.html).
   document.querySelectorAll(".action-card").forEach((btn) => {
     btn.addEventListener("click", () => {
-      window.location.href = `/customer/new-request.html?mode=${btn.dataset.mode}`;
+      window.location.href = `/fixconnect/customer/new-request.html?mode=${btn.dataset.mode}`;
     });
   });
 
   document.getElementById("diagnose-btn").addEventListener("click", () => {
-    window.location.href = "/customer/new-request.html";
+    window.location.href = "/fixconnect/customer/new-request.html";
   });
+
 </script>
 
 </body>
