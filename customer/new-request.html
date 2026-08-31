@@ -32,6 +32,8 @@
   #rec-status { font-size: 13px; color: #666; }
   audio#audio-preview { width: 100%; margin-top: 10px; }
 
+  .hint { font-size: 12px; color: #888; margin-top: 8px; line-height: 1.7; }
+
   .submit-btn { width: 100%; padding: 15px; border: none; border-radius: 14px; background: #1a73e8; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
   .submit-btn:disabled { background: #a9c5f0; }
 
@@ -72,7 +74,7 @@
   </div>
 
   <div class="panel" data-panel="text">
-    <textarea id="text-input" placeholder="مشکل وسیله‌ات رو اینجا توضیح بده..."></textarea>
+    <textarea id="text-input" placeholder="مشکل وسیلهات رو اینجا توضیح بده..."></textarea>
   </div>
 
   <div class="panel" data-panel="voice">
@@ -87,6 +89,12 @@
     <input type="file" accept="video/*" capture="environment" id="video-input" style="display:none" />
     <button class="capture-btn" id="video-btn">برای گرفتن یا انتخاب ویدئو بزن</button>
     <video id="video-preview" class="preview-video" controls style="display:none"></video>
+    <!-- FIX: the AI service can only analyze image/text/audio, not
+         video — a video-only submission always came back as an
+         empty/unhelpful diagnosis. Make that limitation explicit and
+         (below) block a video-only submission before it wastes an
+         AI call. -->
+    <div class="hint">ویدئو مستقیماً برای متخصص ذخیره میشه، ولی برای «تشخیص هوشمند» باید حتماً یک عکس، توضیح متنی یا پیام صوتی هم اضافه کنی.</div>
   </div>
 
   <button class="submit-btn" id="submit-btn">🔍 تشخیص مشکل</button>
@@ -219,8 +227,17 @@
     const submitBtn = document.getElementById("submit-btn");
     const text = document.getElementById("text-input").value.trim();
 
+    // FIX: video alone used to pass this check and go straight to the
+    // AI service, which has no video support — the customer always
+    // got back an empty "device_type: null" result with zero
+    // explanation. Now we tell them up front instead of wasting a
+    // round trip and confusing them.
     if (!photoFile && !text && !audioBlob && !videoFile) {
       alert("لطفاً حداقل یکی از موارد (عکس، متن، صدا یا ویدئو) رو وارد کن");
+      return;
+    }
+    if (!photoFile && !text && !audioBlob && videoFile) {
+      alert("ویدئو بهتنهایی برای «تشخیص هوشمند» کافی نیست. لطفاً یک عکس، توضیح متنی یا پیام صوتی هم اضافه کن — ویدئو همچنان برای متخصص ذخیره و ارسال میشه.");
       return;
     }
 
@@ -278,7 +295,7 @@
     if (analysis.safety_warning) {
       const el = document.getElementById("r-safety");
       el.style.display = "block";
-      el.textContent = "⚠️ " + analysis.safety_warning;
+      el.textContent = "⚠ " + analysis.safety_warning;
     }
 
     if (result.needs_manual_selection) {
@@ -288,7 +305,7 @@
       if (professions && professions.length) {
         select.innerHTML = professions.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
       } else {
-        select.innerHTML = `<option value="">فعلاً حرفه‌ای ثبت نشده</option>`;
+        select.innerHTML = `<option value="">فعلاً حرفهای ثبت نشده</option>`;
       }
     }
 
@@ -312,7 +329,7 @@
       if (matchResult.count > 0) {
         alert(`درخواست شما برای ${matchResult.count} متخصص ارسال شد ✓`);
       } else {
-        alert(matchResult.message || "فعلاً متخصص مناسبی پیدا نشد، به‌محض ثبت‌نام متخصص جدید مطلع می‌شوید.");
+        alert(matchResult.message || "فعلاً متخصص مناسبی پیدا نشد، بهمحض ثبتنام متخصص جدید مطلع میشوید.");
       }
     } catch (err) {
       alert("خطا در پیدا کردن متخصص: " + err.message);
