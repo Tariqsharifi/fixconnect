@@ -95,15 +95,15 @@
 
   const profile = await getCurrentProfile();
   if (!profile) {
-    window.location.href = "/index.html";
+    window.location.href = "/fixconnect/index.html";
     throw new Error("not logged in");
   }
   if (profile.role === "admin") {
-    window.location.href = "/admin/";
+    window.location.href = "/fixconnect/admin/";
     throw new Error("admin cannot signup as professional");
   }
   if (profile.role === "professional") {
-    window.location.href = "/professional/pending.html";
+    window.location.href = "/fixconnect/professional/pending.html";
     throw new Error("already professional");
   }
 
