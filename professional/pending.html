@@ -35,21 +35,22 @@
   import { supabase } from "../shared/supabase-client.js";
   import { getCurrentProfile, logout } from "../shared/auth.js";
 
-  const profile = await getCurrentProfile();
-  if (!profile) {
-    window.location.href = "/index.html";
-    throw new Error("not logged in");
-  }
-  if (profile.role !== "professional") {
-    window.location.href = "/index.html";
-    throw new Error("not a professional");
-  }
+
 
   const { data: profDetails } = await supabase
     .from("professional_profiles")
     .select("status")
     .eq("profile_id", profile.id)
     .single();
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    window.location.href = "/fixconnect/index.html";
+    throw new Error("not logged in");
+  }
+  if (profile.role !== "professional") {
+    window.location.href = "/fixconnect/index.html";
+    throw new Error("not a professional");
+  }
 
   document.getElementById("loading-screen").style.display = "none";
   document.getElementById("card").style.display = "block";
