@@ -61,7 +61,7 @@
 
 <main>
   <div class="tabs">
-    <button class="tab active" data-tab="new">درخواست‌های جدید</button>
+    <button class="tab active" data-tab="new">درخواستهای جدید</button>
     <button class="tab" data-tab="active">کارهای در حال انجام</button>
   </div>
   <div id="list-container"></div>
@@ -75,6 +75,7 @@
 <script type="module">
   import { supabase } from "../shared/supabase-client.js";
   import { getCurrentProfile, logout } from "../shared/auth.js";
+  import { esc } from "../shared/utils.js";
   const profile = await getCurrentProfile();
       if (!profile || profile.role !== "professional") {
     window.location.href = "/fixconnect/index.html";
@@ -118,7 +119,7 @@
 
     const matchStatuses = currentTab === "new" ? ["sent"] : ["accepted"];
 
-    const { data: matches, error } = await supabase
+    const { data: rawMatches, error } = await supabase
       .from("request_matches")
       .select(`
         id, status, created_at,
@@ -132,6 +133,19 @@
       .eq("professional_id", profile.id)
       .in("status", matchStatuses)
       .order("created_at", { ascending: false });
+
+    // FIX: the "active" tab used to be driven purely by
+    // request_matches.status ("accepted"), which never changes again
+    // once a job is marked complete — so completed/cancelled jobs sat
+    // in this list forever, complete with a still-clickable "اتمام
+    // کار" button (letting a job be "completed" repeatedly, firing a
+    // duplicate notification every time). Now we also filter on the
+    // *actual* service_requests.status for the active tab.
+    const matches = (rawMatches ?? []).filter((m) => {
+      if (currentTab !== "active") return true;
+      const status = m.service_requests?.status;
+      return status === "ACCEPTED" || status === "IN_PROGRESS";
+    });
 
     if (error || !matches || matches.length === 0) {
       listContainer.innerHTML = `<div class="empty">${currentTab === "new" ? "فعلاً درخواست جدیدی نداری" : "کار در حال انجامی نداری"}</div>`;
@@ -147,15 +161,16 @@
       const card = document.createElement("div");
       card.className = "req-card";
 
+      // FIX (XSS): all DB-sourced strings escaped before innerHTML.
       card.innerHTML = `
         <div class="req-top">
-          <div class="req-device">${req.devices?.name || "دستگاه نامشخص"}</div>
-          ${currentTab === "active" ? `<span class="status-tag">${req.status === "IN_PROGRESS" ? "در حال انجام" : "پذیرفته‌شده"}</span>` : `<span class="req-date">${new Date(match.created_at).toLocaleDateString("fa-IR")}</span>`}
+          <div class="req-device">${esc(req.devices?.name || "دستگاه نامشخص")}</div>
+          ${currentTab === "active" ? `<span class="status-tag">${req.status === "IN_PROGRESS" ? "در حال انجام" : "پذیرفتهشده"}</span>` : `<span class="req-date">${new Date(match.created_at).toLocaleDateString("fa-IR")}</span>`}
         </div>
-        <div class="req-location">📍 ${req.city || ""}${req.area ? " - " + req.area : ""}</div>
-        ${req.symptoms ? `<div class="req-symptoms">${req.symptoms}</div>` : ""}
-        ${req.possible_problems?.length ? `<div class="req-symptoms"><b>احتمالات:</b> ${req.possible_problems.join("، ")}</div>` : ""}
-        ${req.safety_warning ? `<div class="req-safety">⚠️ ${req.safety_warning}</div>` : ""}
+        <div class="req-location">📍 ${esc(req.city || "")}${req.area ? " - " + esc(req.area) : ""}</div>
+        ${req.symptoms ? `<div class="req-symptoms">${esc(req.symptoms)}</div>` : ""}
+        ${req.possible_problems?.length ? `<div class="req-symptoms"><b>احتمالات:</b> ${esc(req.possible_problems.join("، "))}</div>` : ""}
+        ${req.safety_warning ? `<div class="req-safety">⚠ ${esc(req.safety_warning)}</div>` : ""}
         <div class="action-container"></div>
       `;
 
@@ -206,7 +221,7 @@
          } else {
         const phone = req.profiles?.phone;
         actionContainer.innerHTML = `
-          ${phone ? `<a class="call-btn" href="tel:${phone}">📞 تماس با مشتری</a>` : ""}
+          ${phone ? `<a class="call-btn" href="tel:${esc(phone)}">📞 تماس با مشتری</a>` : ""}
           <a class="call-btn" style="background:#1a1a2e;margin-top:6px" href="/fixconnect/professional/chat.html?request=${req.id}">💬 چت</a>
           <button class="accept-btn" style="width:100%;margin-top:8px" id="complete-btn-${req.id}">✅ اتمام کار</button>
         `;
