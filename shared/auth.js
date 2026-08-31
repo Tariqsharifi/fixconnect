@@ -8,7 +8,6 @@ import { supabase, callFunction } from "./supabase-client.js";
 
 // ---------------- Telegram login ----------------
 
-// Call this once the Telegram Login Widget gives you a payload.
 export async function loginWithTelegram(telegramPayload) {
   const result = await callFunction("telegram-auth", telegramPayload);
 
@@ -21,13 +20,11 @@ export async function loginWithTelegram(telegramPayload) {
     throw new Error("خطا در فعال‌سازی نشست کاربری");
   }
 
-  return result.profile; // { id, role, full_name, phone, city, area, is_blocked }
+  return result.profile;
 }
 
 // ---------------- Email login ----------------
 
-// Simple 3-field signup: name, email, password. No email confirmation
-// step — the person is logged in immediately, to keep friction low.
 export async function signupWithEmail(fullName, email, password) {
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -85,8 +82,15 @@ export async function getCurrentProfile() {
   return profile;
 }
 
-// Guards a page: if not logged in, or logged in with the wrong role,
-// redirect to loginUrl. Call this at the top of every panel page.
+export async function getProfessionalApplication(profileId) {
+  const { data } = await supabase
+    .from("professional_profiles")
+    .select("status")
+    .eq("profile_id", profileId)
+    .maybeSingle();
+  return data;
+}
+
 export async function requireRole(requiredRole, loginUrl = "/fixconnect/index.html") {
   const profile = await getCurrentProfile();
 
