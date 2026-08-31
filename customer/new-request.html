@@ -234,8 +234,8 @@
         .insert({ customer_id: profile.id, description: text || null, city: profile.city, area: profile.area, status: "NEW" })
         .select()
         .single();
+       if (reqError || !request) throw new Error("خطا در ثبت درخواست: " + (reqError?.message || "نامشخص"));
 
-      if (reqError || !request) throw new Error("خطا در ثبت درخواست");
       currentRequestId = request.id;
 
       const uploads = [];
