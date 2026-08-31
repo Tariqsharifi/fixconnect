@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<title>FixConnect — درخواست‌های من</title>
+<title>FixConnect — درخواستهای من</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 30px; }
@@ -56,7 +56,7 @@
 
 <header>
   <button class="back" onclick="location.href='/fixconnect/customer/index.html'">›</button>
-  <div class="title">درخواست‌های من</div>
+  <div class="title">درخواستهای من</div>
 </header>
 
 <main id="main-content"></main>
@@ -66,7 +66,7 @@
     <div class="nav-icon">🏠</div>خانه
   </button>
   <button class="active">
-    <div class="nav-icon">📋</div>درخواست‌ها
+    <div class="nav-icon">📋</div>درخواستها
   </button>
   <button onclick="location.href='/fixconnect/customer/devices.html'">
     <div class="nav-icon">🧰</div>وسایل
@@ -79,6 +79,7 @@
 <script type="module">
   import { supabase } from "../shared/supabase-client.js";
   import { requireRole } from "../shared/auth.js";
+  import { esc } from "../shared/utils.js";
 
   const profile = await requireRole("customer", "/fixconnect/index.html");
   if (!profile) throw new Error("not authorized");
@@ -88,8 +89,8 @@
 
   const statusLabels = {
     NEW: "جدید", ANALYZING: "در حال تحلیل", MATCHING: "در حال یافتن متخصص",
-    SENT: "ارسال‌شده به متخصص‌ها", ACCEPTED: "پذیرفته‌شده", IN_PROGRESS: "در حال انجام",
-    COMPLETED: "تکمیل‌شده", CANCELLED: "لغوشده", REJECTED: "ردشده",
+    SENT: "ارسالشده به متخصصها", ACCEPTED: "پذیرفتهشده", IN_PROGRESS: "در حال انجام",
+    COMPLETED: "تکمیلشده", CANCELLED: "لغوشده", REJECTED: "ردشده",
   };
 
   const { data: requests, error } = await supabase
@@ -112,22 +113,28 @@
   } else {
     for (const req of requests) {
       const card = document.createElement("div");
+      // FIX (XSS): every DB-sourced string below is passed through
+      // esc() before going into innerHTML. Previously request
+      // symptoms/brand/model/possible_problems/safety_warning were
+      // inserted raw — a customer could type "<img src=x onerror=...>"
+      // as a symptom and have it execute in their own (and later an
+      // admin's, if ever surfaced there) browser.
       card.className = "req-card" + (req.id === highlightId ? " highlight" : "");
       card.innerHTML = `
         <div class="req-top">
           <div>
-            <div class="req-device">${req.devices?.name || req.professions?.name || "دستگاه نامشخص"}</div>
+            <div class="req-device">${esc(req.devices?.name || req.professions?.name || "دستگاه نامشخص")}</div>
             <div class="req-date">${new Date(req.created_at).toLocaleDateString("fa-IR")}</div>
           </div>
-          <span class="badge badge-${req.status}">${statusLabels[req.status] || req.status}</span>
+          <span class="badge badge-${req.status}">${esc(statusLabels[req.status] || req.status)}</span>
         </div>
-        ${req.symptoms ? `<div class="req-symptoms">${req.symptoms}</div>` : ""}
+        ${req.symptoms ? `<div class="req-symptoms">${esc(req.symptoms)}</div>` : ""}
         <button class="toggle-btn">مشاهدهٔ جزئیات ▾</button>
         <div class="req-details">
-          ${req.brand ? `<div class="detail-row"><b>برند:</b> ${req.brand}</div>` : ""}
-          ${req.model ? `<div class="detail-row"><b>مدل:</b> ${req.model}</div>` : ""}
-          ${req.possible_problems?.length ? `<div class="detail-row"><b>مشکلات احتمالی:</b> ${req.possible_problems.join("، ")}</div>` : ""}
-          ${req.safety_warning ? `<div class="detail-row" style="color:#b25c00">⚠️ ${req.safety_warning}</div>` : ""}
+          ${req.brand ? `<div class="detail-row"><b>برند:</b> ${esc(req.brand)}</div>` : ""}
+          ${req.model ? `<div class="detail-row"><b>مدل:</b> ${esc(req.model)}</div>` : ""}
+          ${req.possible_problems?.length ? `<div class="detail-row"><b>مشکلات احتمالی:</b> ${esc(req.possible_problems.join("، "))}</div>` : ""}
+          ${req.safety_warning ? `<div class="detail-row" style="color:#b25c00">⚠ ${esc(req.safety_warning)}</div>` : ""}
           <div class="matches-container"></div>
           ${["ACCEPTED", "IN_PROGRESS"].includes(req.status) ? `<a href="/fixconnect/customer/chat.html?request=${req.id}" style="display:block;text-align:center;background:#1a73e8;color:#fff;padding:10px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;margin-top:8px">💬 چت با متخصص</a>` : ""}
           ${!["COMPLETED", "CANCELLED", "REJECTED"].includes(req.status) ? `<button class="cancel-btn">لغو درخواست</button>` : ""}
@@ -151,10 +158,10 @@
 
           const container = card.querySelector(".matches-container");
           if (matches && matches.length) {
-            container.innerHTML = `<div class="matches-title">متخصص‌های مرتبط:</div>` +
+            container.innerHTML = `<div class="matches-title">متخصصهای مرتبط:</div>` +
               matches.map((m) => `
                 <div class="match-item">
-                  <span>${m.professional_profiles?.business_name || "متخصص"}</span>
+                  <span>${esc(m.professional_profiles?.business_name || "متخصص")}</span>
                   <span class="match-status">${m.status === "accepted" ? "پذیرفته ✓" : m.status === "rejected" ? "رد شده" : "در انتظار"}</span>
                 </div>
               `).join("");
@@ -165,7 +172,7 @@
       const cancelBtn = card.querySelector(".cancel-btn");
       if (cancelBtn) {
         cancelBtn.addEventListener("click", async () => {
-          if (!confirm("مطمئنی می‌خوای این درخواست رو لغو کنی؟")) return;
+          if (!confirm("مطمئنی میخوای این درخواست رو لغو کنی؟")) return;
           await supabase.from("service_requests").update({ status: "CANCELLED" }).eq("id", req.id);
           location.reload();
         });
