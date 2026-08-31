@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<title>FixConnect — ثبت‌نام متخصص</title>
+<title>FixConnect — ثبتنام متخصص</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 30px; }
@@ -40,15 +40,15 @@
 <div id="loading-screen">در حال بارگذاری...</div>
 
 <header>
-  <div class="title">ثبت‌نام به‌عنوان متخصص</div>
-  <div class="sub">پس از تکمیل فرم، اطلاعاتت برای بررسی ادمین ارسال می‌شود</div>
+  <div class="title">ثبتنام بهعنوان متخصص</div>
+  <div class="sub">پس از تکمیل فرم، اطلاعاتت برای بررسی ادمین ارسال میشود</div>
 </header>
 
 <main>
   <form id="signup-form">
     <div class="section">
-      <div class="section-title">اطلاعات کسب‌وکار</div>
-      <label>نام کسب‌وکار / تعمیرگاه</label>
+      <div class="section-title">اطلاعات کسبوکار</div>
+      <label>نام کسبوکار / تعمیرگاه</label>
       <input id="business_name" required placeholder="مثلاً: تعمیرگاه سریع" />
 
       <label>شماره تماس</label>
@@ -71,27 +71,27 @@
     </div>
 
     <div class="section">
-      <div class="section-title">تخصص‌ها (حداقل یکی رو انتخاب کن)</div>
+      <div class="section-title">تخصصها (حداقل یکی رو انتخاب کن)</div>
       <div class="profession-list" id="profession-list">
         <span style="font-size:13px;color:#999">در حال بارگذاری...</span>
       </div>
 
       <div class="suggest-row">
-        <button type="button" class="suggest-toggle" id="suggest-toggle">حرفه‌ات توی لیست نیست؟ پیشنهاد بده +</button>
+        <button type="button" class="suggest-toggle" id="suggest-toggle">حرفهات توی لیست نیست؟ پیشنهاد بده +</button>
         <div id="suggest-box">
           <input id="suggest-input" placeholder="اسم حرفه رو بنویس (مثلاً: تعمیر موبایل)" />
         </div>
       </div>
     </div>
 
-    <button type="submit" class="submit-btn" id="submit-btn">ثبت‌نام و ارسال برای بررسی</button>
+    <button type="submit" class="submit-btn" id="submit-btn">ثبتنام و ارسال برای بررسی</button>
     <div class="error" id="error-box"></div>
   </form>
 </main>
 
 <script type="module">
   import { supabase } from "../shared/supabase-client.js";
-  import { getCurrentProfile } from "../shared/auth.js";
+  import { getCurrentProfile, getProfessionalApplication } from "../shared/auth.js";
 
   const profile = await getCurrentProfile();
   if (!profile) {
@@ -105,6 +105,17 @@
   if (profile.role === "professional") {
     window.location.href = "/fixconnect/professional/pending.html";
     throw new Error("already professional");
+  }
+  // FIX: previously this only checked profile.role === "professional"
+  // to catch "already applied". But role now stays "customer" while
+  // an application is pending/rejected (see shared/auth.js) — so a
+  // pending applicant used to be able to open this form again and
+  // submit a second application. Check for an existing
+  // professional_profiles row directly instead.
+  const existingApplication = await getProfessionalApplication(profile.id);
+  if (existingApplication) {
+    window.location.href = "/fixconnect/professional/pending.html";
+    throw new Error("application already exists");
   }
 
   document.getElementById("loading-screen").style.display = "none";
@@ -140,7 +151,7 @@
       listEl.appendChild(chip);
     });
   } else {
-    listEl.innerHTML = `<span style="font-size:13px;color:#999">فعلاً حرفه‌ای ثبت نشده — از گزینهٔ پیشنهاد زیر استفاده کن</span>`;
+    listEl.innerHTML = `<span style="font-size:13px;color:#999">فعلاً حرفهای ثبت نشده — از گزینهٔ پیشنهاد زیر استفاده کن</span>`;
   }
 
   document.getElementById("suggest-toggle").addEventListener("click", () => {
@@ -173,11 +184,17 @@
     submitBtn.textContent = "در حال ثبت...";
 
     try {
+      // FIX: no longer sets role: "professional" here. Doing that
+      // *before* admin review meant a rejected applicant permanently
+      // lost customer access with no way back (see admin/index.html —
+      // role now flips to "professional" only on approval, and back
+      // to "customer" if rejected). We still update phone/city/area
+      // since those are ordinary profile fields.
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({ role: "professional", phone, city, area })
+        .update({ phone, city, area })
         .eq("id", profile.id);
-      if (profileError) throw new Error("خطا در به‌روزرسانی پروفایل");
+      if (profileError) throw new Error("خطا در بهروزرسانی پروفایل");
 
       const { error: ppError } = await supabase.from("professional_profiles").insert({
         profile_id: profile.id,
@@ -187,7 +204,7 @@
         description,
         status: "pending",
       });
-      if (ppError) throw new Error("خطا در ثبت اطلاعات کسب‌وکار");
+      if (ppError) throw new Error("خطا در ثبت اطلاعات کسبوکار");
 
       if (selectedProfessions.size > 0) {
         const rows = [...selectedProfessions].map((profession_id) => ({
@@ -209,7 +226,7 @@
     } catch (err) {
       errorBox.textContent = err.message || "خطایی رخ داد";
       submitBtn.disabled = false;
-      submitBtn.textContent = "ثبت‌نام و ارسال برای بررسی";
+      submitBtn.textContent = "ثبتنام و ارسال برای بررسی";
     }
   });
 </script>
