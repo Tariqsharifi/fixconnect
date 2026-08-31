@@ -28,9 +28,9 @@
   .filter-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; font-size: 12px; border: 1px solid #ddd; background: #fff; color: #555; }
   .filter-chip.active { background: #111827; color: #fff; border-color: #111827; }
 
-  .pro-card, .sug-card, .item-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-  .pro-top, .sug-top, .item-top { display: flex; justify-content: space-between; align-items: center; }
-  .pro-name, .sug-name, .item-name { font-weight: 700; font-size: 15px; color: #222; }
+  .pro-card, .sug-card, .item-card, .user-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .pro-top, .sug-top, .item-top, .user-top { display: flex; justify-content: space-between; align-items: center; }
+  .pro-name, .sug-name, .item-name, .user-name { font-weight: 700; font-size: 15px; color: #222; }
   .pro-status { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
   .status-pending { background: #fff3e0; color: #b25c00; }
   .status-approved { background: #e6f4ea; color: #1a7a34; }
@@ -39,7 +39,7 @@
   .status-active { background: #e6f4ea; color: #1a7a34; }
   .status-inactive { background: #eee; color: #888; }
 
-  .pro-detail, .sug-detail, .item-detail { font-size: 13px; color: #555; margin-top: 6px; }
+  .pro-detail, .sug-detail, .item-detail, .user-detail { font-size: 13px; color: #555; margin-top: 6px; }
   .pro-professions { font-size: 12px; color: #888; margin-top: 6px; }
   .action-row { display: flex; gap: 8px; margin-top: 12px; }
   .action-row button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; }
@@ -68,10 +68,11 @@
 
 <div class="tabs">
   <button class="tab active" data-tab="dashboard">داشبورد</button>
-  <button class="tab" data-tab="professionals">متخصص‌ها</button>
+  <button class="tab" data-tab="professionals">متخصصها</button>
+  <button class="tab" data-tab="users">کاربران</button>
   <button class="tab" data-tab="suggestions">پیشنهادها <span class="badge-count" id="sug-count" style="display:none">0</span></button>
-  <button class="tab" data-tab="professions">حرفه‌ها</button>
-  <button class="tab" data-tab="devices">دستگاه‌ها</button>
+  <button class="tab" data-tab="professions">حرفهها</button>
+  <button class="tab" data-tab="devices">دستگاهها</button>
 </div>
 
 <main id="main-content"></main>
@@ -79,6 +80,7 @@
 <script type="module">
   import { supabase } from "../shared/supabase-client.js";
   import { getCurrentProfile, logout } from "../shared/auth.js";
+  import { esc } from "../shared/utils.js";
   const profile = await getCurrentProfile();
   if (!profile || profile.role !== "admin") {
     window.location.href = "/fixconnect/index.html";
@@ -106,6 +108,7 @@
   async function render() {
     if (currentTab === "dashboard") await renderDashboard();
     else if (currentTab === "professionals") await renderProfessionals();
+    else if (currentTab === "users") await renderUsers();
     else if (currentTab === "suggestions") await renderSuggestions();
     else if (currentTab === "professions") await renderProfessions();
     else await renderDevices();
@@ -135,9 +138,9 @@
         <div class="stat-card"><div class="stat-value">${customers.count ?? 0}</div><div class="stat-label">مشتری</div></div>
         <div class="stat-card"><div class="stat-value">${professionals.count ?? 0}</div><div class="stat-label">متخصص</div></div>
         <div class="stat-card warn"><div class="stat-value">${pendingPros.count ?? 0}</div><div class="stat-label">در انتظار تأیید</div></div>
-        <div class="stat-card"><div class="stat-value">${totalRequests.count ?? 0}</div><div class="stat-label">کل درخواست‌ها</div></div>
+        <div class="stat-card"><div class="stat-value">${totalRequests.count ?? 0}</div><div class="stat-label">کل درخواستها</div></div>
         <div class="stat-card"><div class="stat-value">${activeRequests.count ?? 0}</div><div class="stat-label">درخواست فعال</div></div>
-        <div class="stat-card"><div class="stat-value">${completedRequests.count ?? 0}</div><div class="stat-label">تکمیل‌شده</div></div>
+        <div class="stat-card"><div class="stat-value">${completedRequests.count ?? 0}</div><div class="stat-label">تکمیلشده</div></div>
         <div class="stat-card"><div class="stat-value">${aiUsageTotal.count ?? 0}</div><div class="stat-label">تحلیل AI</div></div>
         <div class="stat-card warn"><div class="stat-value">${aiUsageFailed.count ?? 0}</div><div class="stat-label">خطای AI</div></div>
         <div class="stat-card warn"><div class="stat-value">${openReports.count ?? 0}</div><div class="stat-label">گزارش باز</div></div>
@@ -169,16 +172,21 @@
     const list = document.getElementById("pro-list");
     list.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
 
+    // FIX: was .order("profile_id", { ascending: false }) — profile_id
+    // is a UUID, so "descending" order was essentially random, not
+    // newest-first. Order by created_at instead. (If your
+    // professional_profiles table doesn't have created_at, add one —
+    // every Supabase table should track it.)
     const { data: pros, error } = await supabase
       .from("professional_profiles")
       .select(`
         profile_id, business_name, address, working_hours, description, status,
-        rating_avg, rating_count,
+        rating_avg, rating_count, created_at,
         profiles:profile_id ( full_name, phone, city, area ),
         professional_professions ( professions ( name ) )
       `)
       .eq("status", profFilter)
-      .order("profile_id", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (error || !pros || pros.length === 0) {
       list.innerHTML = `<div class="empty">موردی در این دسته نیست</div>`;
@@ -194,17 +202,20 @@
         .filter(Boolean)
         .join("، ");
 
+      // FIX (XSS): every DB-sourced string escaped before innerHTML —
+      // business_name/description come straight from a public signup
+      // form, so this is user input reaching an admin's browser.
       card.innerHTML = `
         <div class="pro-top">
-          <div class="pro-name">${p.business_name}</div>
+          <div class="pro-name">${esc(p.business_name)}</div>
           <span class="pro-status status-${p.status}">${
             { pending: "در انتظار", approved: "تأییدشده", rejected: "ردشده", blocked: "مسدود" }[p.status]
           }</span>
         </div>
-        <div class="pro-detail">👤 ${p.profiles?.full_name || "—"} | 📞 ${p.profiles?.phone || "—"}</div>
-        <div class="pro-detail">📍 ${p.profiles?.city || ""}${p.profiles?.area ? " - " + p.profiles.area : ""}</div>
-        ${p.description ? `<div class="pro-detail">${p.description}</div>` : ""}
-        <div class="pro-professions">تخصص‌ها: ${professionNames || "—"}</div>
+        <div class="pro-detail">👤 ${esc(p.profiles?.full_name || "—")} | 📞 ${esc(p.profiles?.phone || "—")}</div>
+        <div class="pro-detail">📍 ${esc(p.profiles?.city || "")}${p.profiles?.area ? " - " + esc(p.profiles.area) : ""}</div>
+        ${p.description ? `<div class="pro-detail">${esc(p.description)}</div>` : ""}
+        <div class="pro-professions">تخصصها: ${esc(professionNames || "—")}</div>
         <div class="action-row" id="actions-${p.profile_id}"></div>
       `;
 
@@ -231,14 +242,73 @@
       .update({ status, approved_at: status === "approved" ? new Date().toISOString() : null, approved_by: profile.id })
       .eq("profile_id", profileId);
 
+    // FIX: profiles.role now transitions here, not at signup time.
+    // - approved  -> role becomes "professional" (so index.html routes
+    //   them to the professional panel on future logins)
+    // - rejected  -> role reverts to "customer" so the person isn't
+    //   permanently locked out of both panels (this was the bug where
+    //   a rejected applicant could never use the app as a customer
+    //   again, because signup.html used to flip role immediately)
+    // - blocked   -> role is left as "professional" (this action is
+    //   only reachable from "approved", so it was already professional;
+    //   professional/index.html still gates on status === "approved",
+    //   so a blocked professional is correctly bounced to pending.html)
+    if (status === "approved") {
+      await supabase.from("profiles").update({ role: "professional" }).eq("id", profileId);
+    } else if (status === "rejected") {
+      await supabase.from("profiles").update({ role: "customer" }).eq("id", profileId);
+    }
+
     await supabase.from("notifications").insert({
       user_id: profileId,
-      title: status === "approved" ? "ثبت‌نام شما تأیید شد" : status === "rejected" ? "ثبت‌نام شما رد شد" : "حساب شما مسدود شد",
-      body: status === "approved" ? "حالا می‌تونی وارد پنل متخصص بشی و درخواست دریافت کنی" : "",
+      title: status === "approved" ? "ثبتنام شما تأیید شد" : status === "rejected" ? "ثبتنام شما رد شد" : "حساب شما مسدود شد",
+      body: status === "approved" ? "حالا میتونی وارد پنل متخصص بشی و درخواست دریافت کنی" : "",
       type: status === "approved" ? "professional_approved" : "professional_rejected",
     });
 
     renderProfessionals();
+  }
+
+  // ---------------- Users (customers) ----------------
+  // FIX: profiles.is_blocked was checked by shared/auth.js
+  // (requireRole, and by telegram-auth on login) but nothing in the
+  // admin UI could ever set it — the only "block" action affected
+  // professional_profiles.status, not a customer account. This tab
+  // makes is_blocked an actually-usable feature instead of dead code.
+  async function renderUsers() {
+    main.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const { data: users, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, phone, city, area, is_blocked, created_at")
+      .eq("role", "customer")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (error || !users || users.length === 0) {
+      main.innerHTML = `<div class="empty">کاربری پیدا نشد</div>`;
+      return;
+    }
+
+    main.innerHTML = "";
+    for (const u of users) {
+      const card = document.createElement("div");
+      card.className = "user-card";
+      card.innerHTML = `
+        <div class="user-top">
+          <div class="user-name">${esc(u.full_name || "بدون نام")}</div>
+          <span class="pro-status status-${u.is_blocked ? "blocked" : "active"}">${u.is_blocked ? "مسدود" : "فعال"}</span>
+        </div>
+        <div class="user-detail">📞 ${esc(u.phone || "—")}</div>
+        <div class="user-detail">📍 ${esc(u.city || "")}${u.area ? " - " + esc(u.area) : ""}</div>
+        <div class="action-row"><button class="btn-block">${u.is_blocked ? "رفع مسدودیت" : "مسدود کردن"}</button></div>
+      `;
+      card.querySelector(".btn-block").addEventListener("click", async () => {
+        await supabase.from("profiles").update({ is_blocked: !u.is_blocked }).eq("id", u.id);
+        renderUsers();
+      });
+      main.appendChild(card);
+    }
   }
 
   // ---------------- Suggestions ----------------
@@ -280,17 +350,19 @@
     for (const s of suggestions) {
       const card = document.createElement("div");
       card.className = "sug-card";
+      // FIX (XSS): suggested_name is free text a professional typed
+      // into a public form — escape before rendering for the admin.
       card.innerHTML = `
         <div class="sug-top">
-          <div class="sug-name">${s.suggested_name}</div>
+          <div class="sug-name">${esc(s.suggested_name)}</div>
           <span class="pro-status status-pending">در انتظار</span>
         </div>
-        <div class="sug-detail">پیشنهاددهنده: ${s.profiles?.full_name || "—"} | 📞 ${s.profiles?.phone || "—"}</div>
+        <div class="sug-detail">پیشنهاددهنده: ${esc(s.profiles?.full_name || "—")} | 📞 ${esc(s.profiles?.phone || "—")}</div>
         <select class="sug-category-select">
-          ${(categories ?? []).map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}
+          ${(categories ?? []).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}
         </select>
         <div class="action-row">
-          <button class="btn-approve">تأیید و افزودن به لیست حرفه‌ها</button>
+          <button class="btn-approve">تأیید و افزودن به لیست حرفهها</button>
           <button class="btn-reject">رد</button>
         </div>
       `;
@@ -375,7 +447,7 @@
         <input id="new-profession-name" placeholder="اسم حرفه (مثلاً: تعمیر موبایل)" />
         <select id="new-profession-category">
           <option value="">— بدون دسته —</option>
-          ${(categories ?? []).map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}
+          ${(categories ?? []).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}
         </select>
         <input id="new-category-name" placeholder="یا اسم دستهٔ جدید بنویس (اختیاری)" />
         <button id="add-profession-btn">افزودن</button>
@@ -413,12 +485,15 @@
     (professions ?? []).forEach((p) => {
       const card = document.createElement("div");
       card.className = "item-card";
+      // FIX (XSS): profession/category names can originate from an
+      // approved professional_suggestions entry (user-typed text), so
+      // escape here too.
       card.innerHTML = `
         <div class="item-top">
-          <div class="item-name">${p.name}</div>
+          <div class="item-name">${esc(p.name)}</div>
           <span class="pro-status status-${p.is_active ? "active" : "inactive"}">${p.is_active ? "فعال" : "غیرفعال"}</span>
         </div>
-        <div class="item-detail">دسته: ${p.profession_categories?.name || "—"}</div>
+        <div class="item-detail">دسته: ${esc(p.profession_categories?.name || "—")}</div>
         <div class="action-row"><button class="btn-toggle">${p.is_active ? "غیرفعال کن" : "فعال کن"}</button></div>
       `;
       card.querySelector(".btn-toggle").addEventListener("click", async () => {
@@ -445,12 +520,12 @@
         <input id="new-device-name" placeholder="اسم دستگاه (مثلاً: مایکروویو)" />
         <select id="new-device-category">
           <option value="">— بدون دسته —</option>
-          ${(deviceCategories ?? []).map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}
+          ${(deviceCategories ?? []).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}
         </select>
         <input id="new-device-category-name" placeholder="یا اسم دستهٔ جدید بنویس (اختیاری)" />
         <select id="new-device-profession">
           <option value="">— حرفهٔ مرتبط رو انتخاب کن —</option>
-          ${(professions ?? []).map((p) => `<option value="${p.id}">${p.name}</option>`).join("")}
+          ${(professions ?? []).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}
         </select>
         <button id="add-device-btn">افزودن</button>
       </div>
@@ -464,7 +539,7 @@
       const professionId = document.getElementById("new-device-profession").value || null;
 
       if (!name) { alert("اسم دستگاه رو بنویس"); return; }
-      if (!professionId) { alert("حرفه مرتبط رو انتخاب کن — بدونش Matching کار نمی‌کنه"); return; }
+      if (!professionId) { alert("حرفه مرتبط رو انتخاب کن — بدونش Matching کار نمیکنه"); return; }
 
       if (newCategoryName) {
         const { data: newCat, error: catError } = await supabase
@@ -491,10 +566,10 @@
       card.className = "item-card";
       card.innerHTML = `
         <div class="item-top">
-          <div class="item-name">${d.name}</div>
+          <div class="item-name">${esc(d.name)}</div>
           <span class="pro-status status-${d.is_active ? "active" : "inactive"}">${d.is_active ? "فعال" : "غیرفعال"}</span>
         </div>
-        <div class="item-detail">دسته: ${d.device_categories?.name || "—"} | حرفه: ${d.professions?.name || "—"}</div>
+        <div class="item-detail">دسته: ${esc(d.device_categories?.name || "—")} | حرفه: ${esc(d.professions?.name || "—")}</div>
         <div class="action-row"><button class="btn-toggle">${d.is_active ? "غیرفعال کن" : "فعال کن"}</button></div>
       `;
       card.querySelector(".btn-toggle").addEventListener("click", async () => {
