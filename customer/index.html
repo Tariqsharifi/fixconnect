@@ -147,8 +147,8 @@
 
 <script type="module">
   import { requireRole, logout } from "../shared/auth.js";
+  const profile = await requireRole("customer", "/fixconnect/index.html");
 
-  const profile = await requireRole("customer", "/index.html");
   if (profile) {
     document.getElementById("greeting").textContent =
       profile.full_name ? `سلام، ${profile.full_name}` : "سلام!";
