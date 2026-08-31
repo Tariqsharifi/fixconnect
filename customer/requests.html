@@ -62,18 +62,7 @@
 <main id="main-content"></main>
 
 <nav class="bottom-nav">
-  <button onclick="location.href='/customer/index.html'">
-    <div class="nav-icon">🏠</div>خانه
-  </button>
-  <button class="active">
-    <div class="nav-icon">📋</div>درخواست‌ها
-  </button>
-  <button onclick="location.href='/customer/devices.html'">
-    <div class="nav-icon">🧰</div>وسایل
-  </button>
-  <button onclick="location.href='/customer/profile.html'">
-    <div class="nav-icon">👤</div>پروفایل
-  </button>
+  
 </nav>
 
 <script type="module">
@@ -85,6 +74,18 @@
 
   const params = new URLSearchParams(location.search);
   const highlightId = params.get("highlight");
+  <button onclick="location.href='/fixconnect/customer/index.html'">
+    <div class="nav-icon">🏠</div>خانه
+  </button>
+  <button class="active">
+    <div class="nav-icon">📋</div>درخواست‌ها
+  </button>
+  <button onclick="location.href='/fixconnect/customer/devices.html'">
+    <div class="nav-icon">🧰</div>وسایل
+  </button>
+  <button onclick="location.href='/fixconnect/customer/profile.html'">
+    <div class="nav-icon">👤</div>پروفایل
+  </button>
 
   const statusLabels = {
     NEW: "جدید", ANALYZING: "در حال تحلیل", MATCHING: "در حال یافتن متخصص",
