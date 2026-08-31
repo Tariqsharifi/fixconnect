@@ -111,7 +111,7 @@
   import { supabase, callFunction } from "../shared/supabase-client.js";
   import { requireRole } from "../shared/auth.js";
 
-  const profile = await requireRole("customer", "/index.html");
+    window.location.href = `/customer/requests.html?highlight=${currentRequestId}`;
   if (!profile) throw new Error("not authorized");
 
   // ---------------- tabs ----------------
