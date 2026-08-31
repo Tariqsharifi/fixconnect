@@ -44,6 +44,7 @@
 <script type="module">
   import { supabase } from "../shared/supabase-client.js";
   import { getCurrentProfile } from "../shared/auth.js";
+  import { esc } from "../shared/utils.js";
 
   const profile = await getCurrentProfile();
   if (!profile || profile.role !== "customer") {
@@ -68,10 +69,12 @@
   document.getElementById("loading-screen").style.display = "none";
 
   if (convError || !conversation) {
-    document.body.innerHTML = `<div class="empty">مکالمه‌ای پیدا نشد — هنوز متخصصی درخواست شما رو نپذیرفته</div>`;
+    document.body.innerHTML = `<div class="empty">مکالمهای پیدا نشد — هنوز متخصصی درخواست شما رو نپذیرفته</div>`;
     throw new Error("no conversation");
   }
 
+  // FIX (XSS): business_name / device name are set via textContent
+  // below, not innerHTML, so no escaping needed for the title.
   document.getElementById("chat-title").textContent =
     `${conversation.professional?.professional_profiles?.[0]?.business_name || "متخصص"} — ${conversation.service_requests?.devices?.name || ""}`;
 
@@ -93,7 +96,11 @@
     messages.forEach((m) => {
       const div = document.createElement("div");
       div.className = "msg " + (m.sender_id === profile.id ? "mine" : "theirs");
-      div.innerHTML = `${m.content}<div class="msg-time">${new Date(m.created_at).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })}</div>`;
+      // FIX (XSS): message content is now escaped before insertion.
+      // Previously this was raw ${m.content} — any user could send a
+      // <script>/<img onerror> chat message that would execute in the
+      // other side's browser (stored XSS).
+      div.innerHTML = `${esc(m.content)}<div class="msg-time">${new Date(m.created_at).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })}</div>`;
       messagesEl.appendChild(div);
     });
     messagesEl.scrollTop = messagesEl.scrollHeight;
