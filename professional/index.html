@@ -86,9 +86,9 @@
     .select("status, business_name")
     .eq("profile_id", profile.id)
     .single();
-
   if (profDetails?.status !== "approved") {
-    window.location.href = "/professional/pending.html";
+    window.location.href = "/fixconnect/professional/pending.html";
+
     throw new Error("not approved yet");
   }
 
