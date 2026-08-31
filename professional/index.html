@@ -95,13 +95,14 @@
   document.getElementById("loading-screen").style.display = "none";
   document.getElementById("greeting").textContent = profDetails.business_name || profile.full_name || "";
 
-  document.getElementById("logout-btn").addEventListener("click", async () => {
-    await logout();
-    window.location.href = "/index.html";
-  });
+  
 
   const listContainer = document.getElementById("list-container");
   let currentTab = "new";
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await logout();
+    window.location.href = "/fixconnect/index.html";
+  });
 
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
