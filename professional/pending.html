@@ -35,13 +35,6 @@
   import { supabase } from "../shared/supabase-client.js";
   import { getCurrentProfile, logout } from "../shared/auth.js";
 
-
-
-  const { data: profDetails } = await supabase
-    .from("professional_profiles")
-    .select("status")
-    .eq("profile_id", profile.id)
-    .single();
   const profile = await getCurrentProfile();
   if (!profile) {
     window.location.href = "/fixconnect/index.html";
@@ -52,11 +45,17 @@
     throw new Error("not a professional");
   }
 
+  const { data: profDetails } = await supabase
+    .from("professional_profiles")
+    .select("status")
+    .eq("profile_id", profile.id)
+    .single();
+
   document.getElementById("loading-screen").style.display = "none";
   document.getElementById("card").style.display = "block";
+
   if (profDetails?.status === "approved") {
     window.location.href = "/fixconnect/professional/index.html";
-
   } else if (profDetails?.status === "rejected") {
     document.getElementById("status-icon").textContent = "❌";
     document.getElementById("status-title").textContent = "متأسفانه تأیید نشد";
@@ -72,13 +71,11 @@
     box.classList.add("rejected");
     box.textContent = "دسترسی شما مسدود شده است";
   }
-  // else: stays on the default "pending" view
 
-    document.getElementById("logout-btn").addEventListener("click", async () => {
+  document.getElementById("logout-btn").addEventListener("click", async () => {
     await logout();
     window.location.href = "/fixconnect/index.html";
   });
-
 </script>
 
 </body>
