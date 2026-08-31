@@ -202,9 +202,10 @@
   function blobToBase64(blob) {
     return fileToBase64(blob);
   }
-
   async function uploadMedia(requestId, file, type, folder) {
-    const path = `${requestId}/${folder}/${Date.now()}-${file.name || "audio.webm"}`;
+    const ext = type === "audio" ? (file.type.includes("mp4") ? "m4a" : "webm") : "";
+    const path = `${requestId}/${folder}/${Date.now()}-${file.name || `audio.${ext || "webm"}`}`;
+
     const { error } = await supabase.storage.from("request-media").upload(path, file);
     if (error) { console.error(error); return; }
     await supabase.from("request_media").insert({ request_id: requestId, type, storage_path: path });
