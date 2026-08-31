@@ -14,6 +14,7 @@
   .status-box { background: #fff3e0; color: #b25c00; border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 600; margin-bottom: 20px; }
   .status-box.rejected { background: #fce8e6; color: #c5221f; }
   button.logout { background: none; border: 1px solid #ddd; color: #666; padding: 10px 20px; border-radius: 10px; font-size: 13px; }
+  button.secondary { background: #1a73e8; border: none; color: #fff; padding: 11px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 10px; display: block; width: 100%; }
   #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
 </style>
 </head>
@@ -24,53 +25,65 @@
 <div class="card" id="card" style="display:none">
   <div class="icon" id="status-icon">⏳</div>
   <div class="title" id="status-title">در انتظار بررسی</div>
-  <div class="status-box" id="status-box">درخواست ثبت‌نام شما در صف بررسی ادمین قرار دارد</div>
+  <div class="status-box" id="status-box">درخواست ثبتنام شما در صف بررسی ادمین قرار دارد</div>
   <div class="desc" id="status-desc">
-    به‌محض تأیید، اعلان دریافت می‌کنی و می‌تونی وارد پنل متخصص بشی و درخواست‌های مرتبط با تخصصت رو ببینی.
+    بهمحض تأیید، اعلان دریافت میکنی و میتونی وارد پنل متخصص بشی و درخواستهای مرتبط با تخصصت رو ببینی.
   </div>
+  <button class="secondary" id="customer-btn" style="display:none">رفتن به پنل مشتری</button>
   <button class="logout" id="logout-btn">خروج از حساب</button>
 </div>
 
 <script type="module">
   import { supabase } from "../shared/supabase-client.js";
-  import { getCurrentProfile, logout } from "../shared/auth.js";
+  import { getCurrentProfile, getProfessionalApplication, logout } from "../shared/auth.js";
 
   const profile = await getCurrentProfile();
   if (!profile) {
     window.location.href = "/fixconnect/index.html";
     throw new Error("not logged in");
   }
-  if (profile.role !== "professional") {
-    window.location.href = "/fixconnect/index.html";
-    throw new Error("not a professional");
-  }
 
-  const { data: profDetails } = await supabase
-    .from("professional_profiles")
-    .select("status")
-    .eq("profile_id", profile.id)
-    .single();
+  // FIX: this used to require profile.role === "professional" to even
+  // load this page. But role now stays "customer" for the entire
+  // pending/rejected period (it only becomes "professional" once an
+  // admin approves — see shared/auth.js + admin/index.html), so that
+  // check would have bounced every pending/rejected applicant straight
+  // back to the login redirect, making this page unreachable after the
+  // very first visit. Check the professional_profiles row directly.
+  const application = await getProfessionalApplication(profile.id);
+  if (!application) {
+    window.location.href = "/fixconnect/index.html";
+    throw new Error("no application on file");
+  }
 
   document.getElementById("loading-screen").style.display = "none";
   document.getElementById("card").style.display = "block";
 
-  if (profDetails?.status === "approved") {
+  if (application.status === "approved") {
     window.location.href = "/fixconnect/professional/index.html";
-  } else if (profDetails?.status === "rejected") {
+  } else if (application.status === "rejected") {
     document.getElementById("status-icon").textContent = "❌";
     document.getElementById("status-title").textContent = "متأسفانه تأیید نشد";
     const box = document.getElementById("status-box");
     box.classList.add("rejected");
-    box.textContent = "درخواست ثبت‌نام شما تأیید نشد";
+    box.textContent = "درخواست ثبتنام شما تأیید نشد";
     document.getElementById("status-desc").textContent =
-      "برای اطلاعات بیشتر یا ثبت‌نام مجدد با پشتیبانی در تماس باش.";
-  } else if (profDetails?.status === "blocked") {
+      "برای اطلاعات بیشتر یا ثبتنام مجدد با پشتیبانی در تماس باش. حساب شما همچنان بهعنوان مشتری فعاله.";
+    // FIX: since role was never changed to "professional" for a
+    // rejected application, the account is still a normal customer
+    // account — surface that path instead of leaving a dead end.
+    document.getElementById("customer-btn").style.display = "block";
+  } else if (application.status === "blocked") {
     document.getElementById("status-icon").textContent = "🚫";
     document.getElementById("status-title").textContent = "حساب مسدود شده";
     const box = document.getElementById("status-box");
     box.classList.add("rejected");
     box.textContent = "دسترسی شما مسدود شده است";
   }
+
+  document.getElementById("customer-btn").addEventListener("click", () => {
+    window.location.href = "/fixconnect/customer/index.html";
+  });
 
   document.getElementById("logout-btn").addEventListener("click", async () => {
     await logout();
