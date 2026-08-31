@@ -55,25 +55,13 @@
 <div id="loading-screen">در حال بارگذاری...</div>
 
 <header>
-    <button class="back" onclick="location.href='/fixconnect/customer/index.html'">›</button>
+  <button class="back" onclick="location.href='/fixconnect/customer/index.html'">›</button>
   <div class="title">درخواست‌های من</div>
 </header>
 
 <main id="main-content"></main>
 
 <nav class="bottom-nav">
-  
-</nav>
-
-<script type="module">
-  import { supabase } from "../shared/supabase-client.js";
-  import { requireRole } from "../shared/auth.js";
-
-    const profile = await requireRole("customer", "/fixconnect/index.html");
-  if (!profile) throw new Error("not authorized");
-
-  const params = new URLSearchParams(location.search);
-  const highlightId = params.get("highlight");
   <button onclick="location.href='/fixconnect/customer/index.html'">
     <div class="nav-icon">🏠</div>خانه
   </button>
@@ -86,6 +74,17 @@
   <button onclick="location.href='/fixconnect/customer/profile.html'">
     <div class="nav-icon">👤</div>پروفایل
   </button>
+</nav>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { requireRole } from "../shared/auth.js";
+
+  const profile = await requireRole("customer", "/fixconnect/index.html");
+  if (!profile) throw new Error("not authorized");
+
+  const params = new URLSearchParams(location.search);
+  const highlightId = params.get("highlight");
 
   const statusLabels = {
     NEW: "جدید", ANALYZING: "در حال تحلیل", MATCHING: "در حال یافتن متخصص",
@@ -109,7 +108,7 @@
 
   if (error || !requests || requests.length === 0) {
     main.innerHTML = `<div class="empty">هنوز درخواستی ثبت نکردی<br><br>
-      <a href="/customer/new-request.html" style="color:#1a73e8;font-weight:600">+ ثبت درخواست جدید</a></div>`;
+      <a href="/fixconnect/customer/new-request.html" style="color:#1a73e8;font-weight:600">+ ثبت درخواست جدید</a></div>`;
   } else {
     for (const req of requests) {
       const card = document.createElement("div");
@@ -176,7 +175,7 @@
     }
 
     const addBtn = document.createElement("a");
-        addBtn.href = "/fixconnect/customer/new-request.html";
+    addBtn.href = "/fixconnect/customer/new-request.html";
     addBtn.style.cssText = "display:block;text-align:center;color:#1a73e8;font-weight:600;font-size:14px;margin-top:10px";
     addBtn.textContent = "+ ثبت درخواست جدید";
     main.appendChild(addBtn);
