@@ -46,11 +46,11 @@
   import { getCurrentProfile } from "../shared/auth.js";
 
   const profile = await getCurrentProfile();
-  if (!profile || profile.role !== "professional") {
-    window.location.href = "/index.html";
+  
     throw new Error("not authorized");
   }
-
+  if (!profile || profile.role !== "professional") {
+    window.location.href = "/fixconnect/index.html";
   const params = new URLSearchParams(location.search);
   const requestId = params.get("request");
   if (!requestId) {
