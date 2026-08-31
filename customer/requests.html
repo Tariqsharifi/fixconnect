@@ -80,7 +80,7 @@
   import { supabase } from "../shared/supabase-client.js";
   import { requireRole } from "../shared/auth.js";
 
-  const profile = await requireRole("customer", "/index.html");
+    const profile = await requireRole("customer", "/fixconnect/index.html");
   if (!profile) throw new Error("not authorized");
 
   const params = new URLSearchParams(location.search);
