@@ -54,9 +54,9 @@
 
   document.getElementById("loading-screen").style.display = "none";
   document.getElementById("card").style.display = "block";
-
   if (profDetails?.status === "approved") {
-    window.location.href = "/professional/index.html";
+    window.location.href = "/fixconnect/professional/index.html";
+
   } else if (profDetails?.status === "rejected") {
     document.getElementById("status-icon").textContent = "❌";
     document.getElementById("status-title").textContent = "متأسفانه تأیید نشد";
