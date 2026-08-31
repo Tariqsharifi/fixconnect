@@ -159,14 +159,20 @@
   document.getElementById("record-btn").addEventListener("click", async () => {
     const btn = document.getElementById("record-btn");
     const status = document.getElementById("rec-status");
-
     if (!isRecording) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : "";
+      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       audioChunks = [];
       mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
       mediaRecorder.onstop = () => {
-        audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const actualType = mediaRecorder.mimeType || "audio/mp4";
+        audioBlob = new Blob(audioChunks, { type: actualType });
+
         const audioEl = document.getElementById("audio-preview");
         audioEl.src = URL.createObjectURL(audioBlob);
         audioEl.style.display = "block";
