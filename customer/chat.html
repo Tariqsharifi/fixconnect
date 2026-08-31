@@ -47,7 +47,7 @@
 
   const profile = await getCurrentProfile();
   if (!profile || profile.role !== "customer") {
-    window.location.href = "/index.html";
+    window.location.href = "/fixconnect/index.html";
     throw new Error("not authorized");
   }
 
