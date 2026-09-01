@@ -1,0 +1,17 @@
+{
+  "name": "FixConnect — مشتری",
+  "short_name": "FixConnect",
+  "description": "پیدا کردن متخصص برای تعمیر لوازم",
+  "start_url": "/fixconnect/customer/index.html",
+  "scope": "/fixconnect/customer/",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#1a73e8",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    { "src": "/fixconnect/customer/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/fixconnect/customer/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
