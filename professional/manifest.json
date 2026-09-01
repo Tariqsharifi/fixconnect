@@ -1,0 +1,17 @@
+{
+  "name": "FixConnect — پنل متخصص",
+  "short_name": "FixConnect Pro",
+  "description": "دریافت درخواست تعمیر و مدیریت کارها",
+  "start_url": "/fixconnect/professional/index.html",
+  "scope": "/fixconnect/professional/",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#1a1a2e",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    { "src": "/fixconnect/professional/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/fixconnect/professional/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
