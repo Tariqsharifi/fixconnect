@@ -177,21 +177,46 @@
     // newest-first. Order by created_at instead. (If your
     // professional_profiles table doesn't have created_at, add one —
     // every Supabase table should track it.)
+     // FIX: professional_profiles has more than one foreign-key path to
+    // profiles (e.g. profile_id AND approved_by both reference it), so
+    // Supabase's automatic embed ("profiles:profile_id(...)") can't
+    // resolve which relationship to use and errors out. Fetch the two
+    // tables separately instead and merge them in JS — this sidesteps
+    // the ambiguity entirely.
     const { data: pros, error } = await supabase
       .from("professional_profiles")
-      .select(`
-        profile_id, business_name, address, working_hours, description, status,
-        rating_avg, rating_count, created_at,
-        profiles:profile_id ( full_name, phone, city, area ),
-        professional_professions ( professions ( name ) )
-      `)
+      .select("profile_id, business_name, address, working_hours, description, status, rating_avg, rating_count, created_at")
       .eq("status", profFilter)
       .order("created_at", { ascending: false });
 
-        if (error) {
+    if (error) {
       list.innerHTML = `<div class="empty">خطا در بارگذاری: ${error.message}</div>`;
       return;
     }
+    if (!pros || pros.length === 0) {
+      list.innerHTML = `<div class="empty">موردی در این دسته نیست</div>`;
+      return;
+    }
+
+    const profileIds = pros.map((p) => p.profile_id);
+
+    const [{ data: profilesData }, { data: professionLinks }] = await Promise.all([
+      supabase.from("profiles").select("id, full_name, phone, city, area").in("id", profileIds),
+      supabase.from("professional_professions").select("professional_id, professions ( name )").in("professional_id", profileIds),
+    ]);
+
+    const profilesById = Object.fromEntries((profilesData ?? []).map((pr) => [pr.id, pr]));
+    const professionsByProId = {};
+    (professionLinks ?? []).forEach((link) => {
+      if (!professionsByProId[link.professional_id]) professionsByProId[link.professional_id] = [];
+      if (link.professions?.name) professionsByProId[link.professional_id].push({ professions: link.professions });
+    });
+
+    pros.forEach((p) => {
+      p.profiles = profilesById[p.profile_id] || null;
+      p.professional_professions = professionsByProId[p.profile_id] || [];
+    });
+ 
     if (!pros || pros.length === 0) {
       list.innerHTML = `<div class="empty">موردی در این دسته نیست</div>`;
       return;
