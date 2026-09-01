@@ -188,7 +188,11 @@
       .eq("status", profFilter)
       .order("created_at", { ascending: false });
 
-    if (error || !pros || pros.length === 0) {
+        if (error) {
+      list.innerHTML = `<div class="empty">خطا در بارگذاری: ${error.message}</div>`;
+      return;
+    }
+    if (!pros || pros.length === 0) {
       list.innerHTML = `<div class="empty">موردی در این دسته نیست</div>`;
       return;
     }
