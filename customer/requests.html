@@ -142,6 +142,29 @@
           ${!["COMPLETED", "CANCELLED", "REJECTED"].includes(req.status) ? `<button class="cancel-btn">لغو درخواست</button>` : ""}
         </div>
       `;
+      // FIX: the customer had no way to call the professional who
+      // accepted their request — only chat was shown. Fetch the
+      // accepted professional's phone and add a call button.
+      if (["ACCEPTED", "IN_PROGRESS"].includes(req.status)) {
+        const { data: acceptedMatch } = await supabase
+          .from("request_matches")
+          .select("professional_id")
+          .eq("request_id", req.id)
+          .eq("status", "accepted")
+          .maybeSingle();
+        if (acceptedMatch) {
+          const { data: proProfile } = await supabase
+            .from("profiles")
+            .select("phone")
+            .eq("id", acceptedMatch.professional_id)
+            .maybeSingle();
+          if (proProfile?.phone) {
+            const callContainer = card.querySelector(".call-container");
+            callContainer.innerHTML = `<a href="tel:${esc(proProfile.phone)}" style="display:block;text-align:center;background:#1a9c4b;color:#fff;padding:10px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;margin-bottom:8px">📞 تماس با متخصص</a>`;
+          }
+        }
+      }
+
 
       const toggleBtn = card.querySelector(".toggle-btn");
       const details = card.querySelector(".req-details");
