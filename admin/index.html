@@ -235,34 +235,29 @@
       list.appendChild(card);
     }
   }
-
   async function updateProStatus(profileId, status) {
-    await supabase
+    const { error: statusError } = await supabase
       .from("professional_profiles")
       .update({ status, approved_at: status === "approved" ? new Date().toISOString() : null, approved_by: profile.id })
       .eq("profile_id", profileId);
 
-    // FIX: profiles.role now transitions here, not at signup time.
-    // - approved  -> role becomes "professional" (so index.html routes
-    //   them to the professional panel on future logins)
-    // - rejected  -> role reverts to "customer" so the person isn't
-    //   permanently locked out of both panels (this was the bug where
-    //   a rejected applicant could never use the app as a customer
-    //   again, because signup.html used to flip role immediately)
-    // - blocked   -> role is left as "professional" (this action is
-    //   only reachable from "approved", so it was already professional;
-    //   professional/index.html still gates on status === "approved",
-    //   so a blocked professional is correctly bounced to pending.html)
+    if (statusError) {
+      alert("خطا در تغییر وضعیت متخصص:\n" + statusError.message);
+      return;
+    }
+
     if (status === "approved") {
-      await supabase.from("profiles").update({ role: "professional" }).eq("id", profileId);
+      const { error: roleError } = await supabase.from("profiles").update({ role: "professional" }).eq("id", profileId);
+      if (roleError) alert("وضعیت تأیید شد ولی نقش کاربر عوض نشد:\n" + roleError.message);
     } else if (status === "rejected") {
-      await supabase.from("profiles").update({ role: "customer" }).eq("id", profileId);
+      const { error: roleError } = await supabase.from("profiles").update({ role: "customer" }).eq("id", profileId);
+      if (roleError) alert("وضعیت رد شد ولی نقش کاربر عوض نشد:\n" + roleError.message);
     }
 
     await supabase.from("notifications").insert({
       user_id: profileId,
-      title: status === "approved" ? "ثبتنام شما تأیید شد" : status === "rejected" ? "ثبتنام شما رد شد" : "حساب شما مسدود شد",
-      body: status === "approved" ? "حالا میتونی وارد پنل متخصص بشی و درخواست دریافت کنی" : "",
+      title: status === "approved" ? "ثبت‌نام شما تأیید شد" : status === "rejected" ? "ثبت‌نام شما رد شد" : "حساب شما مسدود شد",
+      body: status === "approved" ? "حالا می‌تونی وارد پنل متخصص بشی و درخواست دریافت کنی" : "",
       type: status === "approved" ? "professional_approved" : "professional_rejected",
     });
 
