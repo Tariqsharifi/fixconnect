@@ -1,0 +1,17 @@
+{
+  "name": "FixConnect \u2014 \u0645\u062f\u06cc\u0631\u06cc\u062a",
+  "short_name": "FC Admin",
+  "description": "\u067e\u0646\u0644 \u0645\u062f\u06cc\u0631\u06cc\u062a FixConnect",
+  "start_url": "/fixconnect/tariqsharifi2000/index.html",
+  "scope": "/fixconnect/tariqsharifi2000/",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#111827",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    { "src": "/fixconnect/tariqsharifi2000/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/fixconnect/tariqsharifi2000/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
