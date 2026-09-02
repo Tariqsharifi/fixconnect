@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — پنل ادمین</title>
+<link rel="manifest" href="/fixconnect/tariqsharifi2000/manifest.json" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 30px; }
+  header { background: #111827; color: #fff; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; }
+  header .brand { font-weight: 800; font-size: 16px; }
+  #logout-btn { background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 20px; }
+
+  .tabs { display: flex; overflow-x: auto; background: #fff; border-bottom: 1px solid #eee; }
+  .tab { flex-shrink: 0; padding: 12px 16px; font-size: 13px; color: #777; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tab.active { color: #111827; font-weight: 700; border-bottom-color: #111827; }
+  .tab .badge-count { background: #c5221f; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-right: 4px; }
+
+  main { padding: 16px; }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .stat-value { font-size: 22px; font-weight: 800; color: #111827; }
+  .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+  .stat-card.warn .stat-value { color: #b25c00; }
+
+  .prof-filter { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; }
+  .filter-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; font-size: 12px; border: 1px solid #ddd; background: #fff; color: #555; }
+  .filter-chip.active { background: #111827; color: #fff; border-color: #111827; }
+
+  .pro-card, .sug-card, .item-card, .user-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .pro-top, .sug-top, .item-top, .user-top { display: flex; justify-content: space-between; align-items: center; }
+  .pro-name, .sug-name, .item-name, .user-name { font-weight: 700; font-size: 15px; color: #222; }
+  .pro-status { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+  .status-pending { background: #fff3e0; color: #b25c00; }
+  .status-approved { background: #e6f4ea; color: #1a7a34; }
+  .status-rejected { background: #fce8e6; color: #c5221f; }
+  .status-blocked { background: #eee; color: #666; }
+  .status-active { background: #e6f4ea; color: #1a7a34; }
+  .status-inactive { background: #eee; color: #888; }
+
+  .pro-detail, .sug-detail, .item-detail, .user-detail { font-size: 13px; color: #555; margin-top: 6px; }
+  .pro-professions { font-size: 12px; color: #888; margin-top: 6px; }
+  .action-row { display: flex; gap: 8px; margin-top: 12px; }
+  .action-row button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; }
+  .btn-approve { background: #1a9c4b; color: #fff; }
+  .btn-reject { background: #fff; color: #c5221f; border: 1px solid #c5221f; }
+  .btn-block { background: #fff; color: #666; border: 1px solid #ccc; }
+  .btn-toggle { background: #fff; color: #111827; border: 1px solid #ccc; }
+
+  .sug-category-select, .add-form select, .add-form input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; margin-top: 8px; }
+  .add-form { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .add-form .form-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #222; }
+  .add-form button { width: 100%; padding: 11px; border: none; border-radius: 10px; background: #111827; color: #fff; font-weight: 700; font-size: 13px; margin-top: 10px; }
+
+  .empty { text-align: center; color: #888; margin-top: 40px; font-size: 14px; }
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <div class="brand">🛠 پنل مدیریت FixConnect</div>
+  <button id="logout-btn">خروج</button>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-tab="dashboard">داشبورد</button>
+  <button class="tab" data-tab="professionals">متخصص‌ها</button>
+  <button class="tab" data-tab="users">کاربران</button>
+  <button class="tab" data-tab="suggestions">پیشنهادها <span class="badge-count" id="sug-count" style="display:none">0</span></button>
+  <button class="tab" data-tab="professions">حرفه‌ها</button>
+  <button class="tab" data-tab="devices">دستگاه‌ها</button>
+</div>
+
+<main id="main-content"></main>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { getCurrentProfile, logout } from "../shared/auth.js";
+  import { esc } from "../shared/utils.js";
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "admin") {
+    window.location.href = "/fixconnect/index.html";
+    throw new Error("not authorized");
+  }
+
+  document.getElementById("loading-screen").style.display = "none";
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+    await logout();
+    window.location.href = "/fixconnect/index.html";
+  });
+
+  const main = document.getElementById("main-content");
+  let currentTab = "dashboard";
+
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      currentTab = tab.dataset.tab;
+      render();
+    });
+  });
+
+  async function render() {
+    if (currentTab === "dashboard") await renderDashboard();
+    else if (currentTab === "professionals") await renderProfessionals();
+    else if (currentTab === "users") await renderUsers();
+    else if (currentTab === "suggestions") await renderSuggestions();
+    else if (currentTab === "professions") await renderProfessions();
+    else await renderDevices();
+  }
+
+  // ---------------- Dashboard ----------------
+  async function renderDashboard() {
+    main.innerHTML = `<div class="empty">در حال بارگذاری آمار...</div>`;
+
+    const [
+      customers, professionals, pendingPros, totalRequests,
+      activeRequests, completedRequests, aiUsageTotal, aiUsageFailed, openReports
+    ] = await Promise.all([
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "customer"),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "professional"),
+      supabase.from("professional_profiles").select("profile_id", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("service_requests").select("id", { count: "exact", head: true }),
+      supabase.from("service_requests").select("id", { count: "exact", head: true }).in("status", ["NEW", "ANALYZING", "MATCHING", "SENT", "ACCEPTED", "IN_PROGRESS"]),
+      supabase.from("service_requests").select("id", { count: "exact", head: true }).eq("status", "COMPLETED"),
+      supabase.from("ai_usage").select("id", { count: "exact", head: true }),
+      supabase.from("ai_usage").select("id", { count: "exact", head: true }).eq("status", "failed"),
+      supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "open"),
+    ]);
+
+    main.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value">${customers.count ?? 0}</div><div class="stat-label">مشتری</div></div>
+        <div class="stat-card"><div class="stat-value">${professionals.count ?? 0}</div><div class="stat-label">متخصص</div></div>
+        <div class="stat-card warn"><div class="stat-value">${pendingPros.count ?? 0}</div><div class="stat-label">در انتظار تأیید</div></div>
+        <div class="stat-card"><div class="stat-value">${totalRequests.count ?? 0}</div><div class="stat-label">کل درخواست‌ها</div></div>
+        <div class="stat-card"><div class="stat-value">${activeRequests.count ?? 0}</div><div class="stat-label">درخواست فعال</div></div>
+        <div class="stat-card"><div class="stat-value">${completedRequests.count ?? 0}</div><div class="stat-label">تکمیل‌شده</div></div>
+        <div class="stat-card"><div class="stat-value">${aiUsageTotal.count ?? 0}</div><div class="stat-label">تحلیل AI</div></div>
+        <div class="stat-card warn"><div class="stat-value">${aiUsageFailed.count ?? 0}</div><div class="stat-label">خطای AI</div></div>
+        <div class="stat-card warn"><div class="stat-value">${openReports.count ?? 0}</div><div class="stat-label">گزارش باز</div></div>
+      </div>
+    `;
+  }
+
+  // ---------------- Professionals ----------------
+  let profFilter = "pending";
+
+  async function renderProfessionals() {
+    main.innerHTML = `
+      <div class="prof-filter">
+        <button class="filter-chip ${profFilter === "pending" ? "active" : ""}" data-f="pending">در انتظار</button>
+        <button class="filter-chip ${profFilter === "approved" ? "active" : ""}" data-f="approved">تأییدشده</button>
+        <button class="filter-chip ${profFilter === "rejected" ? "active" : ""}" data-f="rejected">ردشده</button>
+        <button class="filter-chip ${profFilter === "blocked" ? "active" : ""}" data-f="blocked">مسدود</button>
+      </div>
+      <div id="pro-list"></div>
+    `;
+
+    main.querySelectorAll(".filter-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        profFilter = chip.dataset.f;
+        renderProfessionals();
+      });
+    });
+
+    const list = document.getElementById("pro-list");
+    list.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    // FIX: was .order("profile_id", { ascending: false }) — profile_id
+    // is a UUID, so "descending" order was essentially random, not
+    // newest-first. Order by created_at instead. (If your
+    // professional_profiles table doesn't have created_at, add one —
+    // every Supabase table should track it.)
+    const { data: pros, error } = await supabase
+      .from("professional_profiles")
+      .select(`
+        profile_id, business_name, address, working_hours, description, status,
+        rating_avg, rating_count, created_at,
+        profiles:profile_id ( full_name, phone, city, area ),
+        professional_professions ( professions ( name ) )
+      `)
+      .eq("status", profFilter)
+      .order("created_at", { ascending: false });
+
+    if (error || !pros || pros.length === 0) {
+      list.innerHTML = `<div class="empty">موردی در این دسته نیست</div>`;
+      return;
+    }
+
+    list.innerHTML = "";
+    for (const p of pros) {
+      const card = document.createElement("div");
+      card.className = "pro-card";
+      const professionNames = (p.professional_professions ?? [])
+        .map((pp) => pp.professions?.name)
+        .filter(Boolean)
+        .join("، ");
+
+      // FIX (XSS): every DB-sourced string escaped before innerHTML —
+      // business_name/description come straight from a public signup
+      // form, so this is user input reaching an admin's browser.
+      card.innerHTML = `
+        <div class="pro-top">
+          <div class="pro-name">${esc(p.business_name)}</div>
+          <span class="pro-status status-${p.status}">${
+            { pending: "در انتظار", approved: "تأییدشده", rejected: "ردشده", blocked: "مسدود" }[p.status]
+          }</span>
+        </div>
+        <div class="pro-detail">👤 ${esc(p.profiles?.full_name || "—")} | 📞 ${esc(p.profiles?.phone || "—")}</div>
+        <div class="pro-detail">📍 ${esc(p.profiles?.city || "")}${p.profiles?.area ? " - " + esc(p.profiles.area) : ""}</div>
+        ${p.description ? `<div class="pro-detail">${esc(p.description)}</div>` : ""}
+        <div class="pro-professions">تخصص‌ها: ${esc(professionNames || "—")}</div>
+        <div class="action-row" id="actions-${p.profile_id}"></div>
+      `;
+
+      const actions = card.querySelector(`#actions-${p.profile_id}`);
+      if (p.status === "pending") {
+        actions.innerHTML = `<button class="btn-approve">تأیید</button><button class="btn-reject">رد</button>`;
+        actions.querySelector(".btn-approve").addEventListener("click", () => updateProStatus(p.profile_id, "approved"));
+        actions.querySelector(".btn-reject").addEventListener("click", () => updateProStatus(p.profile_id, "rejected"));
+      } else if (p.status === "approved") {
+        actions.innerHTML = `<button class="btn-block">مسدود کردن</button>`;
+        actions.querySelector(".btn-block").addEventListener("click", () => updateProStatus(p.profile_id, "blocked"));
+      } else {
+        actions.innerHTML = `<button class="btn-approve">تأیید مجدد</button>`;
+        actions.querySelector(".btn-approve").addEventListener("click", () => updateProStatus(p.profile_id, "approved"));
+      }
+
+      list.appendChild(card);
+    }
+  }
+
+  async function updateProStatus(profileId, status) {
+    // FIX (diagnostic): the update result was never checked, so if the
+    // database silently rejected it (e.g. a row-level-security policy
+    // blocking admin from updating someone else's row), the button did
+    // nothing and nobody could tell why. Now we check for an error and
+    // show it, and we bail out before touching profiles.role if the
+    // status update itself failed — otherwise the two tables could end
+    // up out of sync.
+    const { error: statusError } = await supabase
+      .from("professional_profiles")
+      .update({ status, approved_at: status === "approved" ? new Date().toISOString() : null, approved_by: profile.id })
+      .eq("profile_id", profileId);
+
+    if (statusError) {
+      alert("خطا در تغییر وضعیت متخصص:\n" + statusError.message);
+      return;
+    }
+
+    // FIX: profiles.role now transitions here, not at signup time.
+    // - approved  -> role becomes "professional" (so index.html routes
+    //   them to the professional panel on future logins)
+    // - rejected  -> role reverts to "customer" so the person isn't
+    //   permanently locked out of both panels (this was the bug where
+    //   a rejected applicant could never use the app as a customer
+    //   again, because signup.html used to flip role immediately)
+    // - blocked   -> role is left as "professional" (this action is
+    //   only reachable from "approved", so it was already professional;
+    //   professional/index.html still gates on status === "approved",
+    //   so a blocked professional is correctly bounced to pending.html)
+    if (status === "approved") {
+      const { error: roleError } = await supabase.from("profiles").update({ role: "professional" }).eq("id", profileId);
+      if (roleError) alert("وضعیت تأیید شد ولی نقش کاربر عوض نشد:\n" + roleError.message);
+    } else if (status === "rejected") {
+      const { error: roleError } = await supabase.from("profiles").update({ role: "customer" }).eq("id", profileId);
+      if (roleError) alert("وضعیت رد شد ولی نقش کاربر عوض نشد:\n" + roleError.message);
+    }
+
+    await supabase.from("notifications").insert({
+      user_id: profileId,
+      title: status === "approved" ? "ثبت‌نام شما تأیید شد" : status === "rejected" ? "ثبت‌نام شما رد شد" : "حساب شما مسدود شد",
+      body: status === "approved" ? "حالا می‌تونی وارد پنل متخصص بشی و درخواست دریافت کنی" : "",
+      type: status === "approved" ? "professional_approved" : "professional_rejected",
+    });
+
+    renderProfessionals();
+  }
+
+  // ---------------- Users (customers) ----------------
+  // FIX: profiles.is_blocked was checked by shared/auth.js
+  // (requireRole, and by telegram-auth on login) but nothing in the
+  // admin UI could ever set it — the only "block" action affected
+  // professional_profiles.status, not a customer account. This tab
+  // makes is_blocked an actually-usable feature instead of dead code.
+  async function renderUsers() {
+    main.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const { data: users, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, phone, city, area, is_blocked, created_at")
+      .eq("role", "customer")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (error || !users || users.length === 0) {
+      main.innerHTML = `<div class="empty">کاربری پیدا نشد</div>`;
+      return;
+    }
+
+    main.innerHTML = "";
+    for (const u of users) {
+      const card = document.createElement("div");
+      card.className = "user-card";
+      card.innerHTML = `
+        <div class="user-top">
+          <div class="user-name">${esc(u.full_name || "بدون نام")}</div>
+          <span class="pro-status status-${u.is_blocked ? "blocked" : "active"}">${u.is_blocked ? "مسدود" : "فعال"}</span>
+        </div>
+        <div class="user-detail">📞 ${esc(u.phone || "—")}</div>
+        <div class="user-detail">📍 ${esc(u.city || "")}${u.area ? " - " + esc(u.area) : ""}</div>
+        <div class="action-row"><button class="btn-block">${u.is_blocked ? "رفع مسدودیت" : "مسدود کردن"}</button></div>
+      `;
+      card.querySelector(".btn-block").addEventListener("click", async () => {
+        await supabase.from("profiles").update({ is_blocked: !u.is_blocked }).eq("id", u.id);
+        renderUsers();
+      });
+      main.appendChild(card);
+    }
+  }
+
+  // ---------------- Suggestions ----------------
+  async function refreshSuggestionBadge() {
+    const { count } = await supabase
+      .from("profession_suggestions")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    const badge = document.getElementById("sug-count");
+    if (count && count > 0) {
+      badge.style.display = "inline-block";
+      badge.textContent = count;
+    } else {
+      badge.style.display = "none";
+    }
+  }
+  refreshSuggestionBadge();
+
+  async function renderSuggestions() {
+    main.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const { data: suggestions, error } = await supabase
+      .from("profession_suggestions")
+      .select("id, suggested_name, category_hint, status, created_at, profiles:suggested_by ( full_name, phone )")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (error || !suggestions || suggestions.length === 0) {
+      main.innerHTML = `<div class="empty">پیشنهاد جدیدی نیست</div>`;
+      return;
+    }
+
+    const { data: categories } = await supabase
+      .from("profession_categories")
+      .select("id, name")
+      .eq("is_active", true);
+
+    main.innerHTML = "";
+    for (const s of suggestions) {
+      const card = document.createElement("div");
+      card.className = "sug-card";
+      // FIX (XSS): suggested_name is free text a professional typed
+      // into a public form — escape before rendering for the admin.
+      card.innerHTML = `
+        <div class="sug-top">
+          <div class="sug-name">${esc(s.suggested_name)}</div>
+          <span class="pro-status status-pending">در انتظار</span>
+        </div>
+        <div class="sug-detail">پیشنهاددهنده: ${esc(s.profiles?.full_name || "—")} | 📞 ${esc(s.profiles?.phone || "—")}</div>
+        <select class="sug-category-select">
+          ${(categories ?? []).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}
+        </select>
+        <div class="action-row">
+          <button class="btn-approve">تأیید و افزودن به لیست حرفه‌ها</button>
+          <button class="btn-reject">رد</button>
+        </div>
+      `;
+
+      const categorySelect = card.querySelector(".sug-category-select");
+
+      card.querySelector(".btn-approve").addEventListener("click", async () => {
+        const slug = s.suggested_name
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9آ-ی\s-]/g, "")
+          .replace(/\s+/g, "-") || `profession-${Date.now()}`;
+
+        const { data: newProfession, error: profError } = await supabase
+          .from("professions")
+          .insert({
+            category_id: categorySelect.value || null,
+            name: s.suggested_name,
+            slug: `${slug}-${Date.now().toString(36)}`,
+            is_active: true,
+          })
+          .select()
+          .single();
+
+        if (profError) {
+          alert("خطا در ساخت حرفهٔ جدید: " + profError.message);
+          return;
+        }
+
+        await supabase
+          .from("profession_suggestions")
+          .update({
+            status: "approved",
+            resolved_profession_id: newProfession.id,
+            reviewed_by: profile.id,
+            reviewed_at: new Date().toISOString(),
+          })
+          .eq("id", s.id);
+
+        renderSuggestions();
+        refreshSuggestionBadge();
+      });
+
+      card.querySelector(".btn-reject").addEventListener("click", async () => {
+        await supabase
+          .from("profession_suggestions")
+          .update({ status: "rejected", reviewed_by: profile.id, reviewed_at: new Date().toISOString() })
+          .eq("id", s.id);
+        renderSuggestions();
+        refreshSuggestionBadge();
+      });
+
+      main.appendChild(card);
+    }
+  }
+
+  // ---------------- Professions CRUD ----------------
+  function slugify(text) {
+    return (
+      text.trim().toLowerCase().replace(/[^a-z0-9آ-ی\s-]/g, "").replace(/\s+/g, "-") ||
+      `item-${Date.now()}`
+    ) + "-" + Date.now().toString(36);
+  }
+
+  async function renderProfessions() {
+    main.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const { data: categories } = await supabase
+      .from("profession_categories")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("sort_order");
+
+    const { data: professions } = await supabase
+      .from("professions")
+      .select("id, name, is_active, profession_categories ( name )")
+      .order("sort_order");
+
+    main.innerHTML = `
+      <div class="add-form">
+        <div class="form-title">افزودن حرفهٔ جدید</div>
+        <input id="new-profession-name" placeholder="اسم حرفه (مثلاً: تعمیر موبایل)" />
+        <select id="new-profession-category">
+          <option value="">— بدون دسته —</option>
+          ${(categories ?? []).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}
+        </select>
+        <input id="new-category-name" placeholder="یا اسم دستهٔ جدید بنویس (اختیاری)" />
+        <button id="add-profession-btn">افزودن</button>
+      </div>
+      <div id="profession-list"></div>
+    `;
+
+    document.getElementById("add-profession-btn").addEventListener("click", async () => {
+      const name = document.getElementById("new-profession-name").value.trim();
+      const newCategoryName = document.getElementById("new-category-name").value.trim();
+      let categoryId = document.getElementById("new-profession-category").value || null;
+
+      if (!name) { alert("اسم حرفه رو بنویس"); return; }
+
+      if (newCategoryName) {
+        const { data: newCat, error: catError } = await supabase
+          .from("profession_categories")
+          .insert({ name: newCategoryName, slug: slugify(newCategoryName), is_active: true })
+          .select()
+          .single();
+        if (catError) { alert("خطا در ساخت دسته: " + catError.message); return; }
+        categoryId = newCat.id;
+      }
+
+      const { error } = await supabase
+        .from("professions")
+        .insert({ name, category_id: categoryId, slug: slugify(name), is_active: true });
+
+      if (error) alert("خطا: " + error.message);
+      renderProfessions();
+    });
+
+    const list = document.getElementById("profession-list");
+    list.innerHTML = "";
+    (professions ?? []).forEach((p) => {
+      const card = document.createElement("div");
+      card.className = "item-card";
+      // FIX (XSS): profession/category names can originate from an
+      // approved professional_suggestions entry (user-typed text), so
+      // escape here too.
+      card.innerHTML = `
+        <div class="item-top">
+          <div class="item-name">${esc(p.name)}</div>
+          <span class="pro-status status-${p.is_active ? "active" : "inactive"}">${p.is_active ? "فعال" : "غیرفعال"}</span>
+        </div>
+        <div class="item-detail">دسته: ${esc(p.profession_categories?.name || "—")}</div>
+        <div class="action-row"><button class="btn-toggle">${p.is_active ? "غیرفعال کن" : "فعال کن"}</button></div>
+      `;
+      card.querySelector(".btn-toggle").addEventListener("click", async () => {
+        await supabase.from("professions").update({ is_active: !p.is_active }).eq("id", p.id);
+        renderProfessions();
+      });
+      list.appendChild(card);
+    });
+  }
+
+  // ---------------- Devices CRUD ----------------
+  async function renderDevices() {
+    main.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const [{ data: deviceCategories }, { data: professions }, { data: devices }] = await Promise.all([
+      supabase.from("device_categories").select("id, name").eq("is_active", true).order("sort_order"),
+      supabase.from("professions").select("id, name").eq("is_active", true).order("sort_order"),
+      supabase.from("devices").select("id, name, is_active, device_categories ( name ), professions ( name )").order("name"),
+    ]);
+
+    main.innerHTML = `
+      <div class="add-form">
+        <div class="form-title">افزودن دستگاه جدید</div>
+        <input id="new-device-name" placeholder="اسم دستگاه (مثلاً: مایکروویو)" />
+        <select id="new-device-category">
+          <option value="">— بدون دسته —</option>
+          ${(deviceCategories ?? []).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}
+        </select>
+        <input id="new-device-category-name" placeholder="یا اسم دستهٔ جدید بنویس (اختیاری)" />
+        <select id="new-device-profession">
+          <option value="">— حرفهٔ مرتبط رو انتخاب کن —</option>
+          ${(professions ?? []).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}
+        </select>
+        <button id="add-device-btn">افزودن</button>
+      </div>
+      <div id="device-list"></div>
+    `;
+
+    document.getElementById("add-device-btn").addEventListener("click", async () => {
+      const name = document.getElementById("new-device-name").value.trim();
+      const newCategoryName = document.getElementById("new-device-category-name").value.trim();
+      let categoryId = document.getElementById("new-device-category").value || null;
+      const professionId = document.getElementById("new-device-profession").value || null;
+
+      if (!name) { alert("اسم دستگاه رو بنویس"); return; }
+      if (!professionId) { alert("حرفه مرتبط رو انتخاب کن — بدونش Matching کار نمی‌کنه"); return; }
+
+      if (newCategoryName) {
+        const { data: newCat, error: catError } = await supabase
+          .from("device_categories")
+          .insert({ name: newCategoryName, slug: slugify(newCategoryName), is_active: true })
+          .select()
+          .single();
+        if (catError) { alert("خطا در ساخت دسته: " + catError.message); return; }
+        categoryId = newCat.id;
+      }
+
+      const { error } = await supabase
+        .from("devices")
+        .insert({ name, category_id: categoryId, profession_id: professionId, slug: slugify(name), is_active: true });
+
+      if (error) alert("خطا: " + error.message);
+      renderDevices();
+    });
+
+    const list = document.getElementById("device-list");
+    list.innerHTML = "";
+    (devices ?? []).forEach((d) => {
+      const card = document.createElement("div");
+      card.className = "item-card";
+      card.innerHTML = `
+        <div class="item-top">
+          <div class="item-name">${esc(d.name)}</div>
+          <span class="pro-status status-${d.is_active ? "active" : "inactive"}">${d.is_active ? "فعال" : "غیرفعال"}</span>
+        </div>
+        <div class="item-detail">دسته: ${esc(d.device_categories?.name || "—")} | حرفه: ${esc(d.professions?.name || "—")}</div>
+        <div class="action-row"><button class="btn-toggle">${d.is_active ? "غیرفعال کن" : "فعال کن"}</button></div>
+      `;
+      card.querySelector(".btn-toggle").addEventListener("click", async () => {
+        await supabase.from("devices").update({ is_active: !d.is_active }).eq("id", d.id);
+        renderDevices();
+      });
+      list.appendChild(card);
+    });
+  }
+
+  render();
+</script>
+
+</body>
+</html>
