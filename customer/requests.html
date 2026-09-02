@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<title>FixConnect — درخواستهای من</title>
+<title>FixConnect — درخواست‌های من</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 30px; }
@@ -56,7 +56,7 @@
 
 <header>
   <button class="back" onclick="location.href='/fixconnect/customer/index.html'">›</button>
-  <div class="title">درخواستهای من</div>
+  <div class="title">درخواست‌های من</div>
 </header>
 
 <main id="main-content"></main>
@@ -66,7 +66,7 @@
     <div class="nav-icon">🏠</div>خانه
   </button>
   <button class="active">
-    <div class="nav-icon">📋</div>درخواستها
+    <div class="nav-icon">📋</div>درخواست‌ها
   </button>
   <button onclick="location.href='/fixconnect/customer/devices.html'">
     <div class="nav-icon">🧰</div>وسایل
@@ -89,8 +89,8 @@
 
   const statusLabels = {
     NEW: "جدید", ANALYZING: "در حال تحلیل", MATCHING: "در حال یافتن متخصص",
-    SENT: "ارسالشده به متخصصها", ACCEPTED: "پذیرفتهشده", IN_PROGRESS: "در حال انجام",
-    COMPLETED: "تکمیلشده", CANCELLED: "لغوشده", REJECTED: "ردشده",
+    SENT: "ارسال‌شده به متخصص‌ها", ACCEPTED: "پذیرفته‌شده", IN_PROGRESS: "در حال انجام",
+    COMPLETED: "تکمیل‌شده", CANCELLED: "لغوشده", REJECTED: "ردشده",
   };
 
   const { data: requests, error } = await supabase
@@ -134,37 +134,50 @@
           ${req.brand ? `<div class="detail-row"><b>برند:</b> ${esc(req.brand)}</div>` : ""}
           ${req.model ? `<div class="detail-row"><b>مدل:</b> ${esc(req.model)}</div>` : ""}
           ${req.possible_problems?.length ? `<div class="detail-row"><b>مشکلات احتمالی:</b> ${esc(req.possible_problems.join("، "))}</div>` : ""}
-          ${req.safety_warning ? `<div class="detail-row" style="color:#b25c00">⚠ ${esc(req.safety_warning)}</div>` : ""}
+          ${req.safety_warning ? `<div class="detail-row" style="color:#b25c00">⚠️ ${esc(req.safety_warning)}</div>` : ""}
           <div class="matches-container"></div>
-                  <div class="call-container"></div>
+          <div class="call-container"></div>
           ${["ACCEPTED", "IN_PROGRESS"].includes(req.status) ? `<a href="/fixconnect/customer/chat.html?request=${req.id}" style="display:block;text-align:center;background:#1a73e8;color:#fff;padding:10px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;margin-top:8px">💬 چت با متخصص</a>` : ""}
-
           ${!["COMPLETED", "CANCELLED", "REJECTED"].includes(req.status) ? `<button class="cancel-btn">لغو درخواست</button>` : ""}
         </div>
       `;
-      // FIX: the customer had no way to call the professional who
-      // accepted their request — only chat was shown. Fetch the
-      // accepted professional's phone and add a call button.
+
+      // DIAGNOSTIC (temporary): instead of silently showing/hiding the
+      // call button, this prints exactly why it did or didn't appear —
+      // a match-lookup error, no accepted match, an RLS-blocked
+      // profile read, or a genuinely empty phone field. Once we see
+      // which one it is, this gets replaced with the plain version.
       if (["ACCEPTED", "IN_PROGRESS"].includes(req.status)) {
-        const { data: acceptedMatch } = await supabase
+        const callContainer = card.querySelector(".call-container");
+        const { data: acceptedMatch, error: matchErr } = await supabase
           .from("request_matches")
           .select("professional_id")
           .eq("request_id", req.id)
           .eq("status", "accepted")
           .maybeSingle();
-        if (acceptedMatch) {
-          const { data: proProfile } = await supabase
+
+        if (matchErr) {
+          callContainer.textContent = "دیباگ - خطای match: " + matchErr.message;
+        } else if (!acceptedMatch) {
+          callContainer.textContent = "دیباگ: هیچ match با status=accepted پیدا نشد";
+        } else {
+          const { data: proProfile, error: phoneErr } = await supabase
             .from("profiles")
             .select("phone")
             .eq("id", acceptedMatch.professional_id)
             .maybeSingle();
-          if (proProfile?.phone) {
-            const callContainer = card.querySelector(".call-container");
+
+          if (phoneErr) {
+            callContainer.textContent = "دیباگ - خطای phone: " + phoneErr.message;
+          } else if (!proProfile) {
+            callContainer.textContent = "دیباگ: پروفایل متخصص پیدا نشد (شاید RLS)";
+          } else if (!proProfile.phone) {
+            callContainer.textContent = "دیباگ: پروفایل پیدا شد ولی phone خالیه";
+          } else {
             callContainer.innerHTML = `<a href="tel:${esc(proProfile.phone)}" style="display:block;text-align:center;background:#1a9c4b;color:#fff;padding:10px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;margin-bottom:8px">📞 تماس با متخصص</a>`;
           }
         }
       }
-
 
       const toggleBtn = card.querySelector(".toggle-btn");
       const details = card.querySelector(".req-details");
@@ -183,7 +196,7 @@
 
           const container = card.querySelector(".matches-container");
           if (matches && matches.length) {
-            container.innerHTML = `<div class="matches-title">متخصصهای مرتبط:</div>` +
+            container.innerHTML = `<div class="matches-title">متخصص‌های مرتبط:</div>` +
               matches.map((m) => `
                 <div class="match-item">
                   <span>${esc(m.professional_profiles?.business_name || "متخصص")}</span>
@@ -197,7 +210,7 @@
       const cancelBtn = card.querySelector(".cancel-btn");
       if (cancelBtn) {
         cancelBtn.addEventListener("click", async () => {
-          if (!confirm("مطمئنی میخوای این درخواست رو لغو کنی؟")) return;
+          if (!confirm("مطمئنی می‌خوای این درخواست رو لغو کنی؟")) return;
           await supabase.from("service_requests").update({ status: "CANCELLED" }).eq("id", req.id);
           location.reload();
         });
