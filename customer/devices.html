@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — وسایل من</title>
+<link rel="manifest" href="/fixconnect/customer/manifest.json" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 76px; }
+  header { background: #1a73e8; color: #fff; padding: 16px 18px; display: flex; align-items: center; gap: 10px; }
+  header button.back { background: none; border: none; color: #fff; font-size: 20px; }
+  header .title { font-weight: 700; font-size: 16px; }
+
+  main { padding: 16px; }
+
+  .empty { text-align: center; color: #888; margin-top: 60px; font-size: 14px; }
+
+  .device-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .device-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .device-name { font-weight: 700; font-size: 15px; color: #222; }
+  .device-meta { font-size: 12px; color: #888; margin-top: 3px; }
+  .device-notes { font-size: 13px; color: #555; margin-top: 8px; }
+  .del-btn { background: none; border: none; color: #c5221f; font-size: 18px; padding: 0 4px; }
+
+  .device-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .device-actions a { flex: 1; text-align: center; padding: 9px; border-radius: 10px; background: #1a73e8; color: #fff; font-size: 12px; font-weight: 600; text-decoration: none; }
+
+  .add-form { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: none; }
+  .add-form.open { display: block; }
+  .add-form label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; margin-top: 10px; }
+  .add-form input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; font-family: inherit; background: #fafafa; }
+  .add-form button { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #1a73e8; color: #fff; font-weight: 700; font-size: 14px; margin-top: 12px; }
+
+  .add-toggle { width: 100%; padding: 13px; border: 2px dashed #bbb; border-radius: 12px; background: #fafafa; color: #555; font-size: 14px; margin-bottom: 16px; }
+
+  nav.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
+  nav.bottom-nav button { background: none; border: none; font-size: 11px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav.bottom-nav button.active { color: #1a73e8; font-weight: 700; }
+  nav.bottom-nav .nav-icon { font-size: 20px; }
+
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <button class="back" onclick="location.href='/fixconnect/customer/index.html'">›</button>
+  <div class="title">وسایل من</div>
+</header>
+
+<main>
+  <button class="add-toggle" id="add-toggle">+ افزودن وسیلهٔ جدید</button>
+
+  <div class="add-form" id="add-form">
+    <label>اسم وسیله (مثلاً: یخچال آشپزخانه)</label>
+    <input id="d-name" required />
+    <label>برند</label>
+    <input id="d-brand" />
+    <label>مدل</label>
+    <input id="d-model" />
+    <label>یادداشت (اختیاری)</label>
+    <input id="d-notes" placeholder="مثلاً: گارانتی تا سال ۱۴۰۶" />
+    <button id="d-save">ذخیره</button>
+  </div>
+
+  <div id="list-container"></div>
+</main>
+
+<nav class="bottom-nav">
+  <button onclick="location.href='/fixconnect/customer/index.html'"><div class="nav-icon">🏠</div>خانه</button>
+  <button onclick="location.href='/fixconnect/customer/requests.html'"><div class="nav-icon">📋</div>درخواست‌ها</button>
+  <button class="active"><div class="nav-icon">🧰</div>وسایل</button>
+  <button onclick="location.href='/fixconnect/customer/profile.html'"><div class="nav-icon">👤</div>پروفایل</button>
+</nav>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { requireRole } from "../shared/auth.js";
+  import { esc } from "../shared/utils.js";
+
+  const profile = await requireRole(["customer", "professional"], "/fixconnect/index.html");
+  if (!profile) throw new Error("not authorized");
+
+  document.getElementById("loading-screen").style.display = "none";
+
+  const addToggle = document.getElementById("add-toggle");
+  const addForm = document.getElementById("add-form");
+  addToggle.addEventListener("click", () => {
+    addForm.classList.toggle("open");
+    addToggle.textContent = addForm.classList.contains("open") ? "بستن فرم" : "+ افزودن وسیلهٔ جدید";
+  });
+
+  document.getElementById("d-save").addEventListener("click", async () => {
+    const name = document.getElementById("d-name").value.trim();
+    if (!name) { alert("اسم وسیله رو بنویس"); return; }
+    const brand = document.getElementById("d-brand").value.trim();
+    const model = document.getElementById("d-model").value.trim();
+    const notes = document.getElementById("d-notes").value.trim();
+
+    const { error } = await supabase.from("customer_devices").insert({
+      customer_id: profile.id,
+      name,
+      brand: brand || null,
+      model: model || null,
+      notes: notes || null,
+    });
+
+    if (error) {
+      alert("خطا در ذخیره: " + error.message);
+      return;
+    }
+
+    document.getElementById("d-name").value = "";
+    document.getElementById("d-brand").value = "";
+    document.getElementById("d-model").value = "";
+    document.getElementById("d-notes").value = "";
+    addForm.classList.remove("open");
+    addToggle.textContent = "+ افزودن وسیلهٔ جدید";
+    loadDevices();
+  });
+
+  async function loadDevices() {
+    const list = document.getElementById("list-container");
+    list.innerHTML = `<div class="empty">در حال بارگذاری...</div>`;
+
+    const { data: devices, error } = await supabase
+      .from("customer_devices")
+      .select("id, name, brand, model, notes, created_at")
+      .eq("customer_id", profile.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      list.innerHTML = `<div class="empty">خطا در بارگذاری: ${esc(error.message)}</div>`;
+      return;
+    }
+
+    if (!devices || devices.length === 0) {
+      list.innerHTML = `<div class="empty">هنوز وسیله‌ای ثبت نکردی</div>`;
+      return;
+    }
+
+    list.innerHTML = "";
+    for (const d of devices) {
+      const card = document.createElement("div");
+      card.className = "device-card";
+      const meta = [d.brand, d.model].filter(Boolean).join(" — ");
+      card.innerHTML = `
+        <div class="device-top">
+          <div>
+            <div class="device-name">${esc(d.name)}</div>
+            ${meta ? `<div class="device-meta">${esc(meta)}</div>` : ""}
+          </div>
+          <button class="del-btn" title="حذف">🗑</button>
+        </div>
+        ${d.notes ? `<div class="device-notes">${esc(d.notes)}</div>` : ""}
+        <div class="device-actions">
+          <a href="/fixconnect/customer/new-request.html?device_note=${encodeURIComponent(d.name + (meta ? " — " + meta : ""))}">🔍 ثبت درخواست تعمیر</a>
+        </div>
+      `;
+      card.querySelector(".del-btn").addEventListener("click", async () => {
+        if (!confirm("این وسیله حذف بشه؟")) return;
+        await supabase.from("customer_devices").delete().eq("id", d.id);
+        loadDevices();
+      });
+      list.appendChild(card);
+    }
+  }
+
+  loadDevices();
+</script>
+
+</body>
+</html>
