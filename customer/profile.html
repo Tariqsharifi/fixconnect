@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — پروفایل</title>
+<link rel="manifest" href="/fixconnect/customer/manifest.json" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 76px; }
+  header { background: #1a73e8; color: #fff; padding: 16px 18px 20px; border-radius: 0 0 20px 20px; }
+  header .brand { font-weight: 800; font-size: 18px; }
+
+  main { padding: 18px; }
+  .section { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .section-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #222; }
+
+  label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; margin-top: 10px; }
+  input { width: 100%; padding: 11px 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; font-family: inherit; background: #fafafa; }
+  input:focus { outline: none; border-color: #1a73e8; background: #fff; }
+
+  .save-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: #1a73e8; color: #fff; font-size: 14px; font-weight: 700; margin-top: 10px; }
+  .save-msg { font-size: 12px; color: #1a7a34; text-align: center; margin-top: 8px; min-height: 16px; }
+
+  .pro-card { background: #1a1a2e; border-radius: 14px; padding: 18px; margin-bottom: 14px; color: #fff; text-decoration: none; display: block; }
+  .pro-card .st { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .pro-card .sd { font-size: 12px; opacity: 0.85; }
+
+  .logout-btn { width: 100%; padding: 13px; border: 1px solid #ddd; border-radius: 12px; background: #fff; color: #c5221f; font-size: 14px; font-weight: 700; }
+
+  nav.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
+  nav.bottom-nav button { background: none; border: none; font-size: 11px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav.bottom-nav button.active { color: #1a73e8; font-weight: 700; }
+  nav.bottom-nav .nav-icon { font-size: 20px; }
+
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <div class="brand">پروفایل من</div>
+</header>
+
+<main>
+  <div id="pro-link-container"></div>
+
+  <form id="profile-form">
+    <div class="section">
+      <label>نام و نام‌خانوادگی</label>
+      <input id="full_name" />
+
+      <label>شماره تماس</label>
+      <input id="phone" />
+
+      <label>شهر</label>
+      <input id="city" />
+
+      <label>محله / منطقه</label>
+      <input id="area" />
+    </div>
+
+    <button type="submit" class="save-btn">ذخیرهٔ تغییرات</button>
+    <div class="save-msg" id="save-msg"></div>
+  </form>
+
+  <button class="logout-btn" id="logout-btn" style="margin-top:14px">خروج از حساب</button>
+</main>
+
+<nav class="bottom-nav">
+  <button onclick="location.href='/fixconnect/customer/index.html'"><div class="nav-icon">🏠</div>خانه</button>
+  <button onclick="location.href='/fixconnect/customer/requests.html'"><div class="nav-icon">📋</div>درخواست‌ها</button>
+  <button onclick="location.href='/fixconnect/customer/devices.html'"><div class="nav-icon">🧰</div>وسایل</button>
+  <button class="active"><div class="nav-icon">👤</div>پروفایل</button>
+</nav>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { getCurrentProfile, requireRole, logout } from "../shared/auth.js";
+
+  const profile = await requireRole(["customer", "professional"], "/fixconnect/index.html");
+  if (!profile) throw new Error("not authorized");
+
+  document.getElementById("loading-screen").style.display = "none";
+
+  // FEATURE: if this is actually a professional account visiting the
+  // customer side (they now can — see shared/auth.js), show a card
+  // pointing them back to their own professional panel, mirroring the
+  // card professional/profile.html shows in the other direction.
+  if (profile.role === "professional") {
+    document.getElementById("pro-link-container").innerHTML = `
+      <a class="pro-card" href="/fixconnect/professional/index.html">
+        <div class="st">🛠 پنل متخصص</div>
+        <div class="sd">این حساب یه متخصصه — برای دیدن درخواست‌های دریافتی برگرد به پنل متخصص</div>
+      </a>
+    `;
+  }
+
+  document.getElementById("full_name").value = profile.full_name || "";
+  document.getElementById("phone").value = profile.phone || "";
+  document.getElementById("city").value = profile.city || "";
+  document.getElementById("area").value = profile.area || "";
+
+  document.getElementById("profile-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById("save-msg");
+    msg.textContent = "";
+
+    const full_name = document.getElementById("full_name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const city = document.getElementById("city").value.trim();
+    const area = document.getElementById("area").value.trim();
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ full_name, phone, city, area })
+      .eq("id", profile.id);
+
+    if (error) {
+      msg.style.color = "#c5221f";
+      msg.textContent = "خطا در ذخیره: " + error.message;
+    } else {
+      msg.style.color = "#1a7a34";
+      msg.textContent = "ذخیره شد ✓";
+    }
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await logout();
+    window.location.href = "/fixconnect/index.html";
+  });
+</script>
+
+</body>
+</html>
