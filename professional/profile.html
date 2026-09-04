@@ -98,9 +98,13 @@
     throw new Error("not authorized");
   }
 
+    // FIX: phone/city/area live on the profiles table, not
+  // professional_profiles — selecting them here always errored,
+  // which made this page think the account wasn't approved yet and
+  // bounce through pending.html straight back to the panel.
   const { data: profDetails } = await supabase
     .from("professional_profiles")
-    .select("business_name, phone, city, area, address, working_hours, description, status")
+    .select("business_name, address, working_hours, description, status")
     .eq("profile_id", profile.id)
     .single();
 
@@ -112,9 +116,9 @@
   }
 
   document.getElementById("business_name").value = profDetails.business_name || "";
-  document.getElementById("phone").value = profDetails.phone || profile.phone || "";
-  document.getElementById("city").value = profDetails.city || profile.city || "";
-  document.getElementById("area").value = profDetails.area || profile.area || "";
+  document.getElementById("phone").value = profile.phone || "";
+  document.getElementById("city").value = profile.city || "";
+  document.getElementById("area").value = profile.area || "";
   document.getElementById("address").value = profDetails.address || "";
   document.getElementById("working_hours").value = profDetails.working_hours || "";
   document.getElementById("description").value = profDetails.description || "";
