@@ -81,7 +81,7 @@
   import { requireRole } from "../shared/auth.js";
   import { esc } from "../shared/utils.js";
 
-  const profile = await requireRole("customer", "/fixconnect/index.html");
+  const profile = await requireRole(["customer", "professional"], "/fixconnect/index.html");
   if (!profile) throw new Error("not authorized");
 
   const params = new URLSearchParams(location.search);
@@ -136,48 +136,10 @@
           ${req.possible_problems?.length ? `<div class="detail-row"><b>مشکلات احتمالی:</b> ${esc(req.possible_problems.join("، "))}</div>` : ""}
           ${req.safety_warning ? `<div class="detail-row" style="color:#b25c00">⚠️ ${esc(req.safety_warning)}</div>` : ""}
           <div class="matches-container"></div>
-          <div class="call-container"></div>
           ${["ACCEPTED", "IN_PROGRESS"].includes(req.status) ? `<a href="/fixconnect/customer/chat.html?request=${req.id}" style="display:block;text-align:center;background:#1a73e8;color:#fff;padding:10px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;margin-top:8px">💬 چت با متخصص</a>` : ""}
           ${!["COMPLETED", "CANCELLED", "REJECTED"].includes(req.status) ? `<button class="cancel-btn">لغو درخواست</button>` : ""}
         </div>
       `;
-
-      // DIAGNOSTIC (temporary): instead of silently showing/hiding the
-      // call button, this prints exactly why it did or didn't appear —
-      // a match-lookup error, no accepted match, an RLS-blocked
-      // profile read, or a genuinely empty phone field. Once we see
-      // which one it is, this gets replaced with the plain version.
-      if (["ACCEPTED", "IN_PROGRESS"].includes(req.status)) {
-        const callContainer = card.querySelector(".call-container");
-        const { data: acceptedMatch, error: matchErr } = await supabase
-          .from("request_matches")
-          .select("professional_id")
-          .eq("request_id", req.id)
-          .eq("status", "accepted")
-          .maybeSingle();
-
-        if (matchErr) {
-          callContainer.textContent = "دیباگ - خطای match: " + matchErr.message;
-        } else if (!acceptedMatch) {
-          callContainer.textContent = "دیباگ: هیچ match با status=accepted پیدا نشد";
-        } else {
-          const { data: proProfile, error: phoneErr } = await supabase
-            .from("profiles")
-            .select("phone")
-            .eq("id", acceptedMatch.professional_id)
-            .maybeSingle();
-
-          if (phoneErr) {
-            callContainer.textContent = "دیباگ - خطای phone: " + phoneErr.message;
-          } else if (!proProfile) {
-            callContainer.textContent = "دیباگ: پروفایل متخصص پیدا نشد (شاید RLS)";
-          } else if (!proProfile.phone) {
-            callContainer.textContent = "دیباگ: پروفایل پیدا شد ولی phone خالیه";
-          } else {
-            callContainer.innerHTML = `<a href="tel:${esc(proProfile.phone)}" style="display:block;text-align:center;background:#1a9c4b;color:#fff;padding:10px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;margin-bottom:8px">📞 تماس با متخصص</a>`;
-          }
-        }
-      }
 
       const toggleBtn = card.querySelector(".toggle-btn");
       const details = card.querySelector(".req-details");
