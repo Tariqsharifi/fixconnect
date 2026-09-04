@@ -114,17 +114,24 @@
 
   <div class="quick-links">
       <a class="quick-link" href="/fixconnect/customer/requests.html">
-      <span class="ql-title">📋 درخواستهای من</span>
+      <span class="ql-title">📋 درخواست‌های من</span>
       <span class="arrow">‹</span>
     </a>
     <a class="quick-link" href="/fixconnect/customer/devices.html">
       <span class="ql-title">🧰 وسایل من</span>
       <span class="arrow">‹</span>
     </a>
-   <a class="quick-link" href="/fixconnect/professional/signup.html">
-  <span class="ql-title">🛠 می‌خوای متخصص بشی؟</span>
-  <span class="arrow">‹</span>
-</a>
+    <a class="quick-link" href="/fixconnect/customer/nearby.html">
+      <span class="ql-title">📍 تعمیرکاران نزدیک</span>
+      <span class="arrow">‹</span>
+    </a>
+    <!-- FIX: there was no way to reach the professional signup form
+         from inside the customer panel — it only existed at a direct
+         URL nobody was told about. Added a normal quick-link to it. -->
+    <a class="quick-link" href="/fixconnect/professional/signup.html">
+      <span class="ql-title">🛠 می‌خوای متخصص بشی؟</span>
+      <span class="arrow">‹</span>
+    </a>
 
   </div>
 </main>
@@ -136,7 +143,7 @@
   </button>
   <button onclick="location.href='/fixconnect/customer/requests.html'">
     <div class="nav-icon">📋</div>
-    درخواستها
+    درخواست‌ها
   </button>
   <button onclick="location.href='/fixconnect/customer/devices.html'">
     <div class="nav-icon">🧰</div>
@@ -151,7 +158,7 @@
 
 <script type="module">
   import { requireRole, logout } from "../shared/auth.js";
-  const profile = await requireRole("customer", "/fixconnect/index.html");
+  const profile = await requireRole(["customer", "professional"], "/fixconnect/index.html");
 
   if (profile) {
     document.getElementById("greeting").textContent =
