@@ -59,9 +59,14 @@
     throw new Error("missing request id");
   }
 
+  // FIX: conversations -> profiles -> professional_profiles was an
+  // ambiguous embed (professional_profiles has two FK paths to
+  // profiles: profile_id and approved_by), so Postgrest rejected the
+  // whole query — chat always said "no conversation found" even when
+  // one existed. Split into two plain queries instead.
   const { data: conversation, error: convError } = await supabase
     .from("conversations")
-    .select("id, service_requests ( devices ( name ) ), professional:professional_id ( professional_profiles ( business_name ) )")
+    .select("id, professional_id, service_requests ( devices ( name ) )")
     .eq("request_id", requestId)
     .eq("customer_id", profile.id)
     .single();
@@ -73,10 +78,14 @@
     throw new Error("no conversation");
   }
 
-  // FIX (XSS): business_name / device name are set via textContent
-  // below, not innerHTML, so no escaping needed for the title.
+  const { data: proProfile } = await supabase
+    .from("professional_profiles")
+    .select("business_name")
+    .eq("profile_id", conversation.professional_id)
+    .maybeSingle();
+
   document.getElementById("chat-title").textContent =
-    `${conversation.professional?.professional_profiles?.[0]?.business_name || "متخصص"} — ${conversation.service_requests?.devices?.name || ""}`;
+    `${proProfile?.business_name || "متخصص"} — ${conversation.service_requests?.devices?.name || ""}`;
 
   const messagesEl = document.getElementById("messages");
 
