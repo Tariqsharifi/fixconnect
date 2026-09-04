@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — پروفایل متخصص</title>
+<link rel="manifest" href="/fixconnect/professional/manifest.json" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 76px; }
+  header { background: #1a1a2e; color: #fff; padding: 16px 18px 20px; border-radius: 0 0 20px 20px; }
+  header .brand { font-weight: 800; font-size: 17px; }
+
+  main { padding: 18px; }
+  .section { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .section-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #222; }
+
+  label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; margin-top: 10px; }
+  input, textarea { width: 100%; padding: 11px 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; font-family: inherit; background: #fafafa; }
+  input:focus, textarea:focus { outline: none; border-color: #1a1a2e; background: #fff; }
+  textarea { min-height: 70px; resize: vertical; }
+
+  .save-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: #1a1a2e; color: #fff; font-size: 14px; font-weight: 700; margin-top: 10px; }
+  .save-msg { font-size: 12px; color: #1a7a34; text-align: center; margin-top: 8px; min-height: 16px; }
+
+  .switch-card { background: #1a73e8; border-radius: 14px; padding: 18px; margin-bottom: 14px; color: #fff; text-decoration: none; display: block; }
+  .switch-card .st { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .switch-card .sd { font-size: 12px; opacity: 0.9; }
+
+  .logout-btn { width: 100%; padding: 13px; border: 1px solid #ddd; border-radius: 12px; background: #fff; color: #c5221f; font-size: 14px; font-weight: 700; }
+
+  nav.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
+  nav.bottom-nav button { background: none; border: none; font-size: 11px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav.bottom-nav button.active { color: #1a1a2e; font-weight: 700; }
+  nav.bottom-nav .nav-icon { font-size: 20px; }
+
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <div class="brand">پروفایل متخصص</div>
+</header>
+
+<main>
+  <a class="switch-card" href="/fixconnect/customer/index.html">
+    <div class="st">🏠 پنل مشتری</div>
+    <div class="sd">اگه خودت هم یه‌بار به تعمیرکار نیاز داشتی، از همینجا به‌عنوان مشتری درخواست ثبت کن</div>
+  </a>
+
+  <form id="profile-form">
+    <div class="section">
+      <div class="section-title">اطلاعات کسب‌وکار</div>
+      <label>نام کسب‌وکار / تعمیرگاه</label>
+      <input id="business_name" required />
+
+      <label>شماره تماس</label>
+      <input id="phone" required />
+
+      <label>شهر</label>
+      <input id="city" required />
+
+      <label>محله / منطقه</label>
+      <input id="area" />
+
+      <label>آدرس</label>
+      <input id="address" />
+
+      <label>ساعات کاری</label>
+      <input id="working_hours" />
+
+      <label>توضیحات</label>
+      <textarea id="description"></textarea>
+    </div>
+
+    <button type="submit" class="save-btn">ذخیرهٔ تغییرات</button>
+    <div class="save-msg" id="save-msg"></div>
+  </form>
+
+  <button class="logout-btn" id="logout-btn" style="margin-top:14px">خروج از حساب</button>
+</main>
+
+<nav class="bottom-nav">
+  <button onclick="location.href='/fixconnect/professional/index.html'"><div class="nav-icon">🏠</div>خانه</button>
+  <button class="active"><div class="nav-icon">👤</div>پروفایل</button>
+</nav>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { getCurrentProfile, logout } from "../shared/auth.js";
+
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "professional") {
+    window.location.href = "/fixconnect/index.html";
+    throw new Error("not authorized");
+  }
+
+  const { data: profDetails } = await supabase
+    .from("professional_profiles")
+    .select("business_name, phone, city, area, address, working_hours, description, status")
+    .eq("profile_id", profile.id)
+    .single();
+
+  document.getElementById("loading-screen").style.display = "none";
+
+  if (profDetails?.status !== "approved") {
+    window.location.href = "/fixconnect/professional/pending.html";
+    throw new Error("not approved yet");
+  }
+
+  document.getElementById("business_name").value = profDetails.business_name || "";
+  document.getElementById("phone").value = profDetails.phone || profile.phone || "";
+  document.getElementById("city").value = profDetails.city || profile.city || "";
+  document.getElementById("area").value = profDetails.area || profile.area || "";
+  document.getElementById("address").value = profDetails.address || "";
+  document.getElementById("working_hours").value = profDetails.working_hours || "";
+  document.getElementById("description").value = profDetails.description || "";
+
+  document.getElementById("profile-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById("save-msg");
+    msg.textContent = "";
+
+    const business_name = document.getElementById("business_name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const city = document.getElementById("city").value.trim();
+    const area = document.getElementById("area").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const working_hours = document.getElementById("working_hours").value.trim();
+    const description = document.getElementById("description").value.trim();
+
+    const { error: e1 } = await supabase
+      .from("professional_profiles")
+      .update({ business_name, address, working_hours, description })
+      .eq("profile_id", profile.id);
+
+    const { error: e2 } = await supabase
+      .from("profiles")
+      .update({ phone, city, area })
+      .eq("id", profile.id);
+
+    if (e1 || e2) {
+      msg.style.color = "#c5221f";
+      msg.textContent = "خطا در ذخیره: " + (e1?.message || e2?.message);
+    } else {
+      msg.style.color = "#1a7a34";
+      msg.textContent = "ذخیره شد ✓";
+    }
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await logout();
+    window.location.href = "/fixconnect/index.html";
+  });
+</script>
+
+</body>
+</html>
