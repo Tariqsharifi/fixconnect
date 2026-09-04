@@ -103,7 +103,9 @@
 
     <div class="manual-select" id="manual-select" style="display:none">
       <p style="font-size:13px;color:#888;margin-bottom:6px">تشخیص مطمئن نبود — لطفاً حرفهٔ مرتبط رو خودت انتخاب کن:</p>
-      <select id="profession-select"><option value="">در حال بارگذاری...</option></select>
+      <select id="profession-select"><option value="">— انتخاب کن —</option></select>
+      <p style="font-size:12px;color:#888;margin-top:10px;margin-bottom:4px">وسیله‌ات تو لیست بالا نبود؟ خودت بنویس:</p>
+      <input id="profession-free-text" placeholder="مثلاً: تعمیر پکیج دیواری" style="width:100%;padding:11px 12px;border:1px solid #ddd;border-radius:10px;font-size:14px;font-family:inherit;background:#fafafa" />
     </div>
 
     <button class="confirm-btn" id="confirm-btn">تأیید و پیدا کردن متخصص</button>
@@ -286,7 +288,7 @@
       const { data: professions } = await supabase.from("professions").select("id, name").eq("is_active", true);
       const select = document.getElementById("profession-select");
       if (professions && professions.length) {
-        select.innerHTML = professions.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
+        select.innerHTML = `<option value="">— انتخاب کن —</option>` + professions.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
       } else {
         select.innerHTML = `<option value="">فعلاً حرفه‌ای ثبت نشده</option>`;
       }
@@ -299,6 +301,34 @@
     if (!currentRequestId) return;
     const confirmBtn = document.getElementById("confirm-btn");
     const manualProfessionId = document.getElementById("profession-select")?.value || null;
+    const freeText = document.getElementById("profession-free-text")?.value.trim() || null;
+
+    // FEATURE: if the customer's device/profession isn't in the fixed
+    // list, they can type it in free text instead of being forced to
+    // pick a wrong category. We still can't auto-match a request with
+    // no profession (matching needs a profession_id to know which
+    // professionals to notify), so in that case we save the note,
+    // flag it for the admin as a profession suggestion, and skip the
+    // matching call — instead of silently matching against the wrong
+    // category or crashing.
+    if (!manualProfessionId && freeText) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "در حال ثبت...";
+
+      await supabase
+        .from("service_requests")
+        .update({ status: "MATCHING", description: freeText })
+        .eq("id", currentRequestId);
+
+      await supabase.from("profession_suggestions").insert({
+        suggested_by: profile.id,
+        suggested_name: freeText,
+      });
+
+      alert("چون این وسیله تو دسته‌بندی‌های فعلی نبود، درخواستت برای بررسی ثبت شد. به‌محض اضافه‌شدن این دسته، به متخصص مرتبط وصل می‌شه.");
+      window.location.href = `/fixconnect/customer/requests.html?highlight=${currentRequestId}`;
+      return;
+    }
 
     confirmBtn.disabled = true;
     confirmBtn.textContent = "در حال پیدا کردن متخصص...";
