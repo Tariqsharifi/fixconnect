@@ -13,28 +13,25 @@
 
   main { padding: 18px; }
 
-  .tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; }
-  .tab { flex-shrink: 0; padding: 8px 16px; border-radius: 20px; background: #fff; border: 1px solid #ddd; font-size: 13px; color: #555; }
-  .tab.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+  .step { background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+  .step-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; background: #1a73e8; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-title { font-size: 14px; font-weight: 700; color: #222; }
+  .step-optional { font-size: 11px; color: #999; margin-right: 4px; }
 
-  .panel { display: none; background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-  .panel.active { display: block; }
-
-  textarea { width: 100%; min-height: 100px; border: 1px solid #ddd; border-radius: 10px; padding: 12px; font-size: 15px; font-family: inherit; resize: vertical; }
+  textarea { width: 100%; min-height: 90px; border: 1px solid #ddd; border-radius: 10px; padding: 12px; font-size: 15px; font-family: inherit; resize: vertical; }
 
   .capture-btn { width: 100%; padding: 14px; border: 2px dashed #bbb; border-radius: 12px; background: #fafafa; color: #555; font-size: 14px; cursor: pointer; }
   .preview-img { width: 100%; border-radius: 12px; margin-top: 10px; }
   video.preview-video { width: 100%; border-radius: 12px; margin-top: 10px; }
 
   .rec-row { display: flex; align-items: center; gap: 12px; }
-  #record-btn { width: 60px; height: 60px; border-radius: 50%; border: none; background: #d93025; color: #fff; font-size: 22px; }
+  #record-btn { width: 56px; height: 56px; border-radius: 50%; border: none; background: #d93025; color: #fff; font-size: 20px; flex-shrink: 0; }
   #record-btn.recording { background: #888; }
   #rec-status { font-size: 13px; color: #666; }
   audio#audio-preview { width: 100%; margin-top: 10px; }
 
-  .hint { font-size: 12px; color: #888; margin-top: 8px; line-height: 1.7; }
-
-  .submit-btn { width: 100%; padding: 15px; border: none; border-radius: 14px; background: #1a73e8; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .submit-btn { width: 100%; padding: 16px; border: none; border-radius: 14px; background: #1a73e8; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
   .submit-btn:disabled { background: #a9c5f0; }
 
   #result-card { display: none; background: #fff; border-radius: 16px; padding: 20px; margin-top: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
@@ -60,24 +57,26 @@
 </header>
 
 <main>
-  <div class="tabs">
-    <button class="tab active" data-tab="photo">📷 عکس</button>
-    <button class="tab" data-tab="text">💬 متن</button>
-    <button class="tab" data-tab="voice">🎤 صدا</button>
-    <button class="tab" data-tab="video">🎥 ویدئو</button>
-  </div>
+  <!-- FEATURE: replaced the tabbed photo/text/voice/video switcher
+       with a single scrollable flow (photo -> text -> audio -> video,
+       video last since it's the least commonly needed) — the person
+       just scrolls down and fills in whatever's relevant instead of
+       tapping between tabs and losing what they entered elsewhere. -->
 
-  <div class="panel active" data-panel="photo">
+  <div class="step">
+    <div class="step-head"><div class="step-num">1</div><div class="step-title">📷 یه عکس بگیر</div></div>
     <input type="file" accept="image/*" capture="environment" id="photo-input" style="display:none" />
     <button class="capture-btn" id="photo-btn">برای گرفتن یا انتخاب عکس بزن</button>
     <img id="photo-preview" class="preview-img" style="display:none" />
   </div>
 
-  <div class="panel" data-panel="text">
-    <textarea id="text-input" placeholder="مشکل وسیلهات رو اینجا توضیح بده..."></textarea>
+  <div class="step">
+    <div class="step-head"><div class="step-num">2</div><div class="step-title">💬 مشکل رو بنویس</div></div>
+    <textarea id="text-input" placeholder="مشکل وسیله‌ات رو اینجا توضیح بده..."></textarea>
   </div>
 
-  <div class="panel" data-panel="voice">
+  <div class="step">
+    <div class="step-head"><div class="step-num">3</div><div class="step-title">🎤 توضیح صوتی</div><span class="step-optional">(اختیاری)</span></div>
     <div class="rec-row">
       <button id="record-btn">🎤</button>
       <div id="rec-status">برای ضبط صدا بزن</div>
@@ -85,16 +84,12 @@
     <audio id="audio-preview" controls style="display:none"></audio>
   </div>
 
-  <div class="panel" data-panel="video">
+  <div class="step">
+    <div class="step-head"><div class="step-num">4</div><div class="step-title">🎥 فیلم</div><span class="step-optional">(فقط اگه لازم شد)</span></div>
     <input type="file" accept="video/*" capture="environment" id="video-input" style="display:none" />
     <button class="capture-btn" id="video-btn">برای گرفتن یا انتخاب ویدئو بزن</button>
     <video id="video-preview" class="preview-video" controls style="display:none"></video>
-    <!-- FIX: the AI service can only analyze image/text/audio, not
-         video — a video-only submission always came back as an
-         empty/unhelpful diagnosis. Make that limitation explicit and
-         (below) block a video-only submission before it wastes an
-         AI call. -->
-    <div class="hint">ویدئو مستقیماً برای متخصص ذخیره میشه، ولی برای «تشخیص هوشمند» باید حتماً یک عکس، توضیح متنی یا پیام صوتی هم اضافه کنی.</div>
+    <div style="font-size:12px;color:#888;margin-top:8px;line-height:1.7">ویدئو مستقیماً برای متخصص ذخیره می‌شه، ولی برای «تشخیص هوشمند» عکس یا متن یا صدا رو هم لازم داری.</div>
   </div>
 
   <button class="submit-btn" id="submit-btn">🔍 تشخیص مشکل</button>
@@ -119,23 +114,16 @@
   import { supabase, callFunction } from "../shared/supabase-client.js";
   import { requireRole } from "../shared/auth.js";
 
-  const profile = await requireRole("customer", "/fixconnect/index.html");
+  const profile = await requireRole(["customer", "professional"], "/fixconnect/index.html");
   if (!profile) throw new Error("not authorized");
 
-  // ---------------- tabs ----------------
-  document.querySelectorAll(".tab").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-      tab.classList.add("active");
-      document.querySelector(`.panel[data-panel="${tab.dataset.tab}"]`).classList.add("active");
-    });
-  });
-
+  // FEATURE: customer/devices.html links here with ?device_note=...
+  // so picking "ثبت درخواست تعمیر" on a saved device pre-fills the
+  // description instead of starting from a blank textarea.
   const params = new URLSearchParams(location.search);
-  const initialMode = params.get("mode");
-  if (initialMode && document.querySelector(`.tab[data-tab="${initialMode}"]`)) {
-    document.querySelector(`.tab[data-tab="${initialMode}"]`).click();
+  const deviceNote = params.get("device_note");
+  if (deviceNote) {
+    document.getElementById("text-input").value = `دستگاه: ${deviceNote}\n`;
   }
 
   // ---------------- photo ----------------
@@ -227,17 +215,12 @@
     const submitBtn = document.getElementById("submit-btn");
     const text = document.getElementById("text-input").value.trim();
 
-    // FIX: video alone used to pass this check and go straight to the
-    // AI service, which has no video support — the customer always
-    // got back an empty "device_type: null" result with zero
-    // explanation. Now we tell them up front instead of wasting a
-    // round trip and confusing them.
     if (!photoFile && !text && !audioBlob && !videoFile) {
       alert("لطفاً حداقل یکی از موارد (عکس، متن، صدا یا ویدئو) رو وارد کن");
       return;
     }
     if (!photoFile && !text && !audioBlob && videoFile) {
-      alert("ویدئو بهتنهایی برای «تشخیص هوشمند» کافی نیست. لطفاً یک عکس، توضیح متنی یا پیام صوتی هم اضافه کن — ویدئو همچنان برای متخصص ذخیره و ارسال میشه.");
+      alert("ویدئو به‌تنهایی برای «تشخیص هوشمند» کافی نیست. لطفاً یک عکس، توضیح متنی یا پیام صوتی هم اضافه کن — ویدئو همچنان برای متخصص ذخیره و ارسال می‌شه.");
       return;
     }
 
@@ -295,7 +278,7 @@
     if (analysis.safety_warning) {
       const el = document.getElementById("r-safety");
       el.style.display = "block";
-      el.textContent = "⚠ " + analysis.safety_warning;
+      el.textContent = "⚠️ " + analysis.safety_warning;
     }
 
     if (result.needs_manual_selection) {
@@ -305,7 +288,7 @@
       if (professions && professions.length) {
         select.innerHTML = professions.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
       } else {
-        select.innerHTML = `<option value="">فعلاً حرفهای ثبت نشده</option>`;
+        select.innerHTML = `<option value="">فعلاً حرفه‌ای ثبت نشده</option>`;
       }
     }
 
@@ -329,7 +312,7 @@
       if (matchResult.count > 0) {
         alert(`درخواست شما برای ${matchResult.count} متخصص ارسال شد ✓`);
       } else {
-        alert(matchResult.message || "فعلاً متخصص مناسبی پیدا نشد، بهمحض ثبتنام متخصص جدید مطلع میشوید.");
+        alert(matchResult.message || "فعلاً متخصص مناسبی پیدا نشد، به‌محض ثبت‌نام متخصص جدید مطلع می‌شوید.");
       }
     } catch (err) {
       alert("خطا در پیدا کردن متخصص: " + err.message);
