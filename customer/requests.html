@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>FixConnect — درخواست‌های من</title>
+<link rel="manifest" href="/fixconnect/customer/manifest.json" />
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 30px; }
@@ -30,6 +31,22 @@
 
   .req-symptoms { font-size: 13px; color: #555; margin-top: 8px; }
 
+  /* FEATURE: live progress stepper — a visual "where is my request
+     right now" bar, like a delivery tracker, instead of just a text
+     badge. */
+  .progress-bar { display: flex; align-items: center; margin: 14px 0 4px; }
+  .progress-step { width: 22px; height: 22px; border-radius: 50%; background: #ddd; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .progress-step.done { background: #1a9c4b; }
+  .progress-step.current { background: #1a73e8; }
+  .progress-line { flex: 1; height: 3px; background: #ddd; margin: 0 2px; }
+  .progress-line.done { background: #1a9c4b; }
+  .progress-labels { display: flex; justify-content: space-between; margin-top: 4px; margin-bottom: 6px; }
+  .progress-labels span { font-size: 10px; color: #999; width: 60px; text-align: center; }
+  .progress-labels span:first-child { text-align: right; }
+  .progress-labels span:last-child { text-align: left; }
+  .terminal-note { font-size: 12px; padding: 8px 10px; border-radius: 8px; margin: 10px 0; }
+  .terminal-note.cancelled { background: #fce8e6; color: #c5221f; }
+
   .req-details { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0; display: none; }
   .req-details.open { display: block; }
   .detail-row { font-size: 13px; margin-bottom: 6px; color: #444; }
@@ -38,9 +55,22 @@
   .matches-title { font-size: 13px; font-weight: 700; margin-top: 10px; margin-bottom: 6px; color: #333; }
   .match-item { display: flex; justify-content: space-between; align-items: center; background: #fafafa; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; font-size: 13px; }
   .match-status { font-size: 11px; color: #888; }
+  /* FEATURE: trust badge for top-rated professionals */
+  .top-badge { display: inline-block; font-size: 10px; background: #fff3e0; color: #b25c00; padding: 2px 7px; border-radius: 10px; margin-right: 6px; font-weight: 700; }
 
   .toggle-btn { background: none; border: none; color: #1a73e8; font-size: 12px; margin-top: 8px; padding: 0; }
   .cancel-btn { width: 100%; padding: 10px; margin-top: 12px; border: 1px solid #c5221f; background: #fff; color: #c5221f; border-radius: 10px; font-size: 13px; }
+
+  /* FEATURE: star rating + review widget shown once a job is completed */
+  .review-card { background: #fffaf0; border: 1px solid #ffe8c2; border-radius: 12px; padding: 14px; margin-top: 10px; }
+  .review-title { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 8px; }
+  .star-row { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; font-size: 26px; margin-bottom: 8px; }
+  .star-row .star { cursor: pointer; color: #ddd; }
+  .star-row .star.filled { color: #f5a623; }
+  .review-comment { width: 100%; border: 1px solid #ddd; border-radius: 10px; padding: 10px; font-size: 13px; font-family: inherit; min-height: 60px; margin-bottom: 8px; }
+  .review-submit { width: 100%; padding: 11px; border: none; border-radius: 10px; background: #1a9c4b; color: #fff; font-weight: 700; font-size: 13px; }
+  .review-done { font-size: 13px; color: #555; }
+  .review-done .stars-readonly { color: #f5a623; font-size: 16px; }
 
   nav.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
   nav.bottom-nav button { background: none; border: none; font-size: 11px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 3px; }
@@ -93,6 +123,34 @@
     COMPLETED: "تکمیل‌شده", CANCELLED: "لغوشده", REJECTED: "ردشده",
   };
 
+  // FEATURE: progress-bar milestones. Every non-terminal status maps
+  // to one of these 4 stages so the customer sees a simple tracker
+  // instead of the raw internal status name.
+  const STAGES = ["submitted", "matching", "accepted", "completed"];
+  const STAGE_LABELS = { submitted: "ثبت شد", matching: "یافتن متخصص", accepted: "پذیرفته شد", completed: "تکمیل شد" };
+  function stageFor(status) {
+    if (status === "COMPLETED") return "completed";
+    if (["ACCEPTED", "IN_PROGRESS"].includes(status)) return "accepted";
+    if (["MATCHING", "SENT"].includes(status)) return "matching";
+    return "submitted"; // NEW, ANALYZING
+  }
+  function renderProgressBar(status) {
+    if (["CANCELLED", "REJECTED"].includes(status)) {
+      return `<div class="terminal-note cancelled">${status === "CANCELLED" ? "این درخواست لغو شده" : "این درخواست رد شده"}</div>`;
+    }
+    const currentIndex = STAGES.indexOf(stageFor(status));
+    let html = `<div class="progress-bar">`;
+    STAGES.forEach((stage, i) => {
+      const cls = i < currentIndex ? "done" : i === currentIndex ? "current" : "";
+      html += `<div class="progress-step ${cls}">${i < currentIndex ? "✓" : i + 1}</div>`;
+      if (i < STAGES.length - 1) {
+        html += `<div class="progress-line ${i < currentIndex ? "done" : ""}"></div>`;
+      }
+    });
+    html += `</div><div class="progress-labels">${STAGES.map((s) => `<span>${STAGE_LABELS[s]}</span>`).join("")}</div>`;
+    return html;
+  }
+
   const { data: requests, error } = await supabase
     .from("service_requests")
     .select(`
@@ -113,12 +171,6 @@
   } else {
     for (const req of requests) {
       const card = document.createElement("div");
-      // FIX (XSS): every DB-sourced string below is passed through
-      // esc() before going into innerHTML. Previously request
-      // symptoms/brand/model/possible_problems/safety_warning were
-      // inserted raw — a customer could type "<img src=x onerror=...>"
-      // as a symptom and have it execute in their own (and later an
-      // admin's, if ever surfaced there) browser.
       card.className = "req-card" + (req.id === highlightId ? " highlight" : "");
       card.innerHTML = `
         <div class="req-top">
@@ -128,7 +180,9 @@
           </div>
           <span class="badge badge-${req.status}">${esc(statusLabels[req.status] || req.status)}</span>
         </div>
+        ${renderProgressBar(req.status)}
         ${req.symptoms ? `<div class="req-symptoms">${esc(req.symptoms)}</div>` : ""}
+        <div class="review-container"></div>
         <button class="toggle-btn">مشاهدهٔ جزئیات ▾</button>
         <div class="req-details">
           ${req.brand ? `<div class="detail-row"><b>برند:</b> ${esc(req.brand)}</div>` : ""}
@@ -136,10 +190,98 @@
           ${req.possible_problems?.length ? `<div class="detail-row"><b>مشکلات احتمالی:</b> ${esc(req.possible_problems.join("، "))}</div>` : ""}
           ${req.safety_warning ? `<div class="detail-row" style="color:#b25c00">⚠️ ${esc(req.safety_warning)}</div>` : ""}
           <div class="matches-container"></div>
+          <div class="call-container"></div>
           ${["ACCEPTED", "IN_PROGRESS"].includes(req.status) ? `<a href="/fixconnect/customer/chat.html?request=${req.id}" style="display:block;text-align:center;background:#1a73e8;color:#fff;padding:10px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;margin-top:8px">💬 چت با متخصص</a>` : ""}
           ${!["COMPLETED", "CANCELLED", "REJECTED"].includes(req.status) ? `<button class="cancel-btn">لغو درخواست</button>` : ""}
         </div>
       `;
+
+      // ---- accepted professional lookup (phone button + review target) ----
+      if (["ACCEPTED", "IN_PROGRESS", "COMPLETED"].includes(req.status)) {
+        const { data: acceptedMatch } = await supabase
+          .from("request_matches")
+          .select("professional_id")
+          .eq("request_id", req.id)
+          .eq("status", "accepted")
+          .maybeSingle();
+
+        if (acceptedMatch) {
+          if (["ACCEPTED", "IN_PROGRESS"].includes(req.status)) {
+            const { data: proProfile } = await supabase
+              .from("profiles")
+              .select("phone")
+              .eq("id", acceptedMatch.professional_id)
+              .maybeSingle();
+            if (proProfile?.phone) {
+              const callContainer = card.querySelector(".call-container");
+              callContainer.innerHTML = `<a href="tel:${esc(proProfile.phone)}" style="display:block;text-align:center;background:#1a9c4b;color:#fff;padding:10px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;margin-bottom:8px">📞 تماس با متخصص</a>`;
+            }
+          }
+
+          if (req.status === "COMPLETED") {
+            const reviewContainer = card.querySelector(".review-container");
+            const { data: existingReview } = await supabase
+              .from("reviews")
+              .select("rating, comment")
+              .eq("request_id", req.id)
+              .maybeSingle();
+
+            if (existingReview) {
+              const filledStars = "★".repeat(existingReview.rating) + "☆".repeat(5 - existingReview.rating);
+              reviewContainer.innerHTML = `
+                <div class="review-card">
+                  <div class="review-title">امتیاز شما به این کار</div>
+                  <div class="review-done"><span class="stars-readonly">${filledStars}</span>${existingReview.comment ? ` — ${esc(existingReview.comment)}` : ""}</div>
+                </div>
+              `;
+            } else {
+              reviewContainer.innerHTML = `
+                <div class="review-card">
+                  <div class="review-title">این کار چطور بود؟ به متخصص امتیاز بده</div>
+                  <div class="star-row" id="star-row-${req.id}">
+                    ${[1, 2, 3, 4, 5].map((n) => `<span class="star" data-value="${n}">★</span>`).join("")}
+                  </div>
+                  <textarea class="review-comment" id="review-comment-${req.id}" placeholder="نظرت رو بنویس (اختیاری)"></textarea>
+                  <button class="review-submit" id="review-submit-${req.id}">ثبت امتیاز</button>
+                </div>
+              `;
+
+              let selectedRating = 0;
+              const starRow = reviewContainer.querySelector(`#star-row-${req.id}`);
+              const stars = [...starRow.querySelectorAll(".star")];
+              stars.forEach((starEl) => {
+                starEl.addEventListener("click", () => {
+                  selectedRating = Number(starEl.dataset.value);
+                  stars.forEach((s) => s.classList.toggle("filled", Number(s.dataset.value) <= selectedRating));
+                });
+              });
+
+              reviewContainer.querySelector(`#review-submit-${req.id}`).addEventListener("click", async () => {
+                if (!selectedRating) { alert("لطفاً حداقل یک ستاره انتخاب کن"); return; }
+                const comment = reviewContainer.querySelector(`#review-comment-${req.id}`).value.trim();
+                const { error: reviewErr } = await supabase.from("reviews").insert({
+                  request_id: req.id,
+                  customer_id: profile.id,
+                  professional_id: acceptedMatch.professional_id,
+                  rating: selectedRating,
+                  comment: comment || null,
+                });
+                if (reviewErr) {
+                  alert("خطا در ثبت امتیاز: " + reviewErr.message);
+                  return;
+                }
+                const filledStars = "★".repeat(selectedRating) + "☆".repeat(5 - selectedRating);
+                reviewContainer.innerHTML = `
+                  <div class="review-card">
+                    <div class="review-title">امتیاز شما به این کار</div>
+                    <div class="review-done"><span class="stars-readonly">${filledStars}</span>${comment ? ` — ${esc(comment)}` : ""}</div>
+                  </div>
+                `;
+              });
+            }
+          }
+        }
+      }
 
       const toggleBtn = card.querySelector(".toggle-btn");
       const details = card.querySelector(".req-details");
@@ -153,18 +295,24 @@
           matchesLoaded = true;
           const { data: matches } = await supabase
             .from("request_matches")
-            .select("status, professional_profiles ( business_name, rating_avg )")
+            .select("status, professional_profiles ( business_name, rating_avg, rating_count )")
             .eq("request_id", req.id);
 
           const container = card.querySelector(".matches-container");
           if (matches && matches.length) {
             container.innerHTML = `<div class="matches-title">متخصص‌های مرتبط:</div>` +
-              matches.map((m) => `
+              matches.map((m) => {
+                const p = m.professional_profiles;
+                // FEATURE: trust badge for professionals with a strong
+                // track record — simple, honest thresholds (not fake).
+                const isTop = p?.rating_avg >= 4.5 && p?.rating_count >= 3;
+                return `
                 <div class="match-item">
-                  <span>${esc(m.professional_profiles?.business_name || "متخصص")}</span>
+                  <span>${isTop ? `<span class="top-badge">⭐ متخصص برتر</span>` : ""}${esc(p?.business_name || "متخصص")}</span>
                   <span class="match-status">${m.status === "accepted" ? "پذیرفته ✓" : m.status === "rejected" ? "رد شده" : "در انتظار"}</span>
                 </div>
-              `).join("");
+              `;
+              }).join("");
           }
         }
       });
