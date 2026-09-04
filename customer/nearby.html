@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — تعمیرکاران نزدیک</title>
+<link rel="manifest" href="/fixconnect/customer/manifest.json" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 76px; }
+  header { background: #1a73e8; color: #fff; padding: 16px 18px; display: flex; align-items: center; gap: 10px; }
+  header button.back { background: none; border: none; color: #fff; font-size: 20px; }
+  header .title { font-weight: 700; font-size: 16px; }
+
+  main { padding: 16px; }
+  .empty { text-align: center; color: #888; margin-top: 60px; font-size: 14px; line-height: 1.8; }
+
+  .filter-chip-row { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; }
+  .filter-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; font-size: 12px; border: 1px solid #ddd; background: #fff; color: #555; }
+  .filter-chip.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+
+  .pro-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .pro-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .pro-name { font-weight: 700; font-size: 15px; color: #222; }
+  .pro-loc { font-size: 12px; color: #888; margin-top: 3px; }
+  .pro-rating { font-size: 12px; color: #f5a623; font-weight: 700; white-space: nowrap; }
+  .top-badge { display: inline-block; font-size: 10px; background: #fff3e0; color: #b25c00; padding: 2px 7px; border-radius: 10px; margin-right: 6px; font-weight: 700; }
+  .pro-professions { font-size: 12px; color: #555; margin-top: 8px; }
+  .pro-desc { font-size: 13px; color: #555; margin-top: 6px; }
+  .pro-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .pro-actions a { flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-size: 12px; font-weight: 700; text-decoration: none; }
+  .call-a { background: #1a9c4b; color: #fff; }
+  .req-a { background: #1a73e8; color: #fff; }
+
+  nav.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
+  nav.bottom-nav button { background: none; border: none; font-size: 11px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav.bottom-nav button.active { color: #1a73e8; font-weight: 700; }
+  nav.bottom-nav .nav-icon { font-size: 20px; }
+
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <button class="back" onclick="location.href='/fixconnect/customer/index.html'">›</button>
+  <div class="title">تعمیرکاران نزدیک</div>
+</header>
+
+<main>
+  <div class="filter-chip-row" id="filter-row"></div>
+  <div id="list-container"></div>
+</main>
+
+<nav class="bottom-nav">
+  <button onclick="location.href='/fixconnect/customer/index.html'"><div class="nav-icon">🏠</div>خانه</button>
+  <button onclick="location.href='/fixconnect/customer/requests.html'"><div class="nav-icon">📋</div>درخواست‌ها</button>
+  <button onclick="location.href='/fixconnect/customer/devices.html'"><div class="nav-icon">🧰</div>وسایل</button>
+  <button onclick="location.href='/fixconnect/customer/profile.html'"><div class="nav-icon">👤</div>پروفایل</button>
+</nav>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { requireRole } from "../shared/auth.js";
+  import { esc } from "../shared/utils.js";
+
+  // NOTE: professional_profiles has latitude/longitude columns for
+  // future real distance-based sorting, but nothing populates them
+  // yet. Until there's a way to capture a professional's exact
+  // location, "nearby" here means "in your city" (from your own
+  // profile), which is honest and still genuinely useful — a fake
+  // distance number would just be misleading.
+  const profile = await requireRole(["customer", "professional"], "/fixconnect/index.html");
+  if (!profile) throw new Error("not authorized");
+
+  document.getElementById("loading-screen").style.display = "none";
+
+  const { data: allPros, error } = await supabase
+    .from("professional_profiles")
+    .select("profile_id, business_name, address, description, rating_avg, rating_count")
+    .eq("status", "approved");
+
+  const list = document.getElementById("list-container");
+
+  if (error) {
+    list.innerHTML = `<div class="empty">خطا در بارگذاری: ${esc(error.message)}</div>`;
+    throw error;
+  }
+  if (!allPros || allPros.length === 0) {
+    list.innerHTML = `<div class="empty">فعلاً متخصص تأییدشده‌ای ثبت نشده</div>`;
+    throw new Error("done");
+  }
+
+  const proIds = allPros.map((p) => p.profile_id);
+  const [{ data: profilesData }, { data: professionLinks }] = await Promise.all([
+    supabase.from("profiles").select("id, city, area").in("id", proIds),
+    supabase.from("professional_professions").select("professional_id, professions ( name )").eq("is_active", true).in("professional_id", proIds),
+  ]);
+
+  const locationById = Object.fromEntries((profilesData ?? []).map((p) => [p.id, p]));
+  const professionsById = {};
+  (professionLinks ?? []).forEach((link) => {
+    if (!professionsById[link.professional_id]) professionsById[link.professional_id] = [];
+    if (link.professions?.name) professionsById[link.professional_id].push(link.professions.name);
+  });
+
+  const cities = [...new Set(Object.values(locationById).map((l) => l.city).filter(Boolean))];
+  let activeCity = profile.city && cities.includes(profile.city) ? profile.city : "همه";
+
+  const filterRow = document.getElementById("filter-row");
+  function renderFilters() {
+    const options = ["همه", ...cities];
+    filterRow.innerHTML = options
+      .map((c) => `<button class="filter-chip ${c === activeCity ? "active" : ""}" data-city="${esc(c)}">${esc(c)}</button>`)
+      .join("");
+    filterRow.querySelectorAll(".filter-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        activeCity = chip.dataset.city;
+        renderFilters();
+        renderList();
+      });
+    });
+  }
+
+  function renderList() {
+    const filtered = allPros.filter((p) => {
+      if (activeCity === "همه") return true;
+      return locationById[p.profile_id]?.city === activeCity;
+    });
+
+    // Simple, transparent ranking: top-rated professionals first.
+    filtered.sort((a, b) => (b.rating_avg ?? 0) - (a.rating_avg ?? 0));
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="empty">متخصصی توی این شهر پیدا نشد</div>`;
+      return;
+    }
+
+    list.innerHTML = "";
+    filtered.forEach((p) => {
+      const loc = locationById[p.profile_id];
+      const professions = professionsById[p.profile_id] || [];
+      const isTop = p.rating_avg >= 4.5 && p.rating_count >= 3;
+
+      const card = document.createElement("div");
+      card.className = "pro-card";
+      card.innerHTML = `
+        <div class="pro-top">
+          <div>
+            <div class="pro-name">${isTop ? `<span class="top-badge">⭐ برتر</span>` : ""}${esc(p.business_name)}</div>
+            <div class="pro-loc">📍 ${esc(loc?.city || "—")}${loc?.area ? " - " + esc(loc.area) : ""}</div>
+          </div>
+          ${p.rating_count ? `<div class="pro-rating">★ ${p.rating_avg} (${p.rating_count})</div>` : ""}
+        </div>
+        ${professions.length ? `<div class="pro-professions">تخصص‌ها: ${esc(professions.join("، "))}</div>` : ""}
+        ${p.description ? `<div class="pro-desc">${esc(p.description)}</div>` : ""}
+        <div class="pro-actions">
+          <a class="req-a" href="/fixconnect/customer/new-request.html?device_note=${encodeURIComponent(p.business_name)}">🔍 ثبت درخواست</a>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+  }
+
+  renderFilters();
+  renderList();
+</script>
+
+</body>
+</html>
