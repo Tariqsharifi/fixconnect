@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — بازار خرید و فروش</title>
+<link rel="manifest" href="/fixconnect/customer/manifest.json" />
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 76px; }
+  header { background: #1a73e8; color: #fff; padding: 16px 18px; display: flex; align-items: center; gap: 10px; }
+  header button.back { background: none; border: none; color: #fff; font-size: 20px; }
+  header .title { font-weight: 700; font-size: 16px; }
+
+  main { padding: 16px; }
+
+  .warning { background: #fff3e0; color: #b25c00; border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.8; margin-bottom: 14px; }
+
+  .search-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .search-row input { flex: 1; padding: 11px 14px; border: 1px solid #ddd; border-radius: 20px; font-size: 14px; font-family: inherit; background: #fff; }
+
+  .filter-chip-row { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; }
+  .filter-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; font-size: 12px; border: 1px solid #ddd; background: #fff; color: #555; }
+  .filter-chip.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+
+  .new-listing-btn { display: block; text-align: center; width: 100%; padding: 13px; border-radius: 12px; background: #1a9c4b; color: #fff; font-weight: 700; font-size: 14px; text-decoration: none; margin-bottom: 16px; }
+
+  .empty { text-align: center; color: #888; margin-top: 60px; font-size: 14px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .listing-card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-decoration: none; color: inherit; display: block; position: relative; }
+  .listing-photo { width: 100%; aspect-ratio: 1; background: #eee; object-fit: cover; display: block; }
+  .listing-photo-placeholder { width: 100%; aspect-ratio: 1; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 28px; color: #bbb; }
+  .listing-body { padding: 10px; }
+  .listing-title { font-size: 13px; font-weight: 700; color: #222; margin-bottom: 4px; line-height: 1.4; }
+  .listing-price { font-size: 13px; color: #1a73e8; font-weight: 700; }
+  .listing-loc { font-size: 11px; color: #999; margin-top: 3px; }
+  .sold-tag { position: absolute; top: 8px; left: 8px; background: #c5221f; color: #fff; font-size: 10px; padding: 3px 8px; border-radius: 10px; font-weight: 700; }
+
+  nav.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #eee; display: flex; justify-content: space-around; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
+  nav.bottom-nav button { background: none; border: none; font-size: 11px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav.bottom-nav button.active { color: #1a73e8; font-weight: 700; }
+  nav.bottom-nav .nav-icon { font-size: 20px; }
+
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <button class="back" onclick="location.href='/fixconnect/customer/index.html'">›</button>
+  <div class="title">بازار خرید و فروش</div>
+</header>
+
+<main>
+  <div class="warning">⚠️ هرگز قبل از دیدن حضوری کالا، پول رو آنلاین یا کارت‌به‌کارت واریز نکن. معامله رو حضوری و بعد از بررسی کامل کالا انجام بده.</div>
+
+  <a class="new-listing-btn" href="/fixconnect/customer/marketplace-new.html">+ ثبت آگهی جدید</a>
+
+  <div class="search-row">
+    <input id="search-input" placeholder="جست‌وجو (مثلاً: یخچال)" />
+  </div>
+  <div class="filter-chip-row" id="filter-row"></div>
+
+  <div id="list-container"></div>
+</main>
+
+<nav class="bottom-nav">
+  <button onclick="location.href='/fixconnect/customer/index.html'"><div class="nav-icon">🏠</div>خانه</button>
+  <button onclick="location.href='/fixconnect/customer/devices.html'"><div class="nav-icon">🧰</div>وسایل</button>
+  <button class="active"><div class="nav-icon">🏷</div>بازار</button>
+  <button onclick="location.href='/fixconnect/customer/profile.html'"><div class="nav-icon">👤</div>پروفایل</button>
+</nav>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { requireRole } from "../shared/auth.js";
+  import { esc } from "../shared/utils.js";
+
+  const profile = await requireRole(["customer", "professional"], "/fixconnect/index.html");
+  if (!profile) throw new Error("not authorized");
+
+  document.getElementById("loading-screen").style.display = "none";
+
+  let allListings = [];
+  let activeCity = "همه";
+  let showMineOnly = false;
+  let searchTerm = "";
+
+  async function loadListings() {
+    const { data, error } = await supabase
+      .from("marketplace_listings")
+      .select("id, title, price, city, area, photo_path, status, seller_id")
+      .in("status", ["active", "sold"])
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      document.getElementById("list-container").innerHTML = `<div class="empty">خطا در بارگذاری: ${esc(error.message)}</div>`;
+      return;
+    }
+    // Only show sold items to their own seller; everyone else sees active only
+    allListings = (data ?? []).filter((l) => l.status === "active" || l.seller_id === profile.id);
+    renderFilters();
+    renderList();
+  }
+
+  function renderFilters() {
+    const cities = [...new Set(allListings.map((l) => l.city).filter(Boolean))];
+    const options = ["همه", ...cities];
+    const row = document.getElementById("filter-row");
+    row.innerHTML = options
+      .map((c) => `<button class="filter-chip ${c === activeCity ? "active" : ""}" data-city="${esc(c)}">${esc(c)}</button>`)
+      .join("") + `<button class="filter-chip ${showMineOnly ? "active" : ""}" id="mine-chip">فقط آگهی‌های من</button>`;
+    row.querySelectorAll(".filter-chip[data-city]").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        activeCity = chip.dataset.city;
+        renderFilters();
+        renderList();
+      });
+    });
+    document.getElementById("mine-chip").addEventListener("click", () => {
+      showMineOnly = !showMineOnly;
+      renderFilters();
+      renderList();
+    });
+  }
+
+  function renderList() {
+    const list = document.getElementById("list-container");
+    let filtered = allListings.filter((l) => {
+      if (activeCity !== "همه" && l.city !== activeCity) return false;
+      if (showMineOnly && l.seller_id !== profile.id) return false;
+      if (!showMineOnly && l.status !== "active") return false;
+      if (searchTerm && !l.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="empty">آگهی‌ای پیدا نشد</div>`;
+      return;
+    }
+
+    list.innerHTML = `<div class="grid">${filtered
+      .map((l) => {
+        const photoUrl = l.photo_path
+          ? supabase.storage.from("marketplace-media").getPublicUrl(l.photo_path).data.publicUrl
+          : null;
+        const priceText = l.price ? `${Number(l.price).toLocaleString("fa-IR")} تومان` : "توافقی";
+        return `
+          <a class="listing-card" href="/fixconnect/customer/marketplace-detail.html?id=${l.id}">
+            ${l.status === "sold" ? `<span class="sold-tag">فروخته شد</span>` : ""}
+            ${photoUrl ? `<img class="listing-photo" src="${photoUrl}" />` : `<div class="listing-photo-placeholder">📷</div>`}
+            <div class="listing-body">
+              <div class="listing-title">${esc(l.title)}</div>
+              <div class="listing-price">${esc(priceText)}</div>
+              <div class="listing-loc">📍 ${esc(l.city || "—")}${l.area ? " - " + esc(l.area) : ""}</div>
+            </div>
+          </a>
+        `;
+      })
+      .join("")}</div>`;
+  }
+
+  document.getElementById("search-input").addEventListener("input", (e) => {
+    searchTerm = e.target.value.trim();
+    renderList();
+  });
+
+  loadListings();
+</script>
+
+</body>
+</html>
