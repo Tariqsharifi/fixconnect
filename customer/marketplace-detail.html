@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — جزئیات آگهی</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 30px; }
+  header { background: #1a73e8; color: #fff; padding: 16px 18px; display: flex; align-items: center; gap: 10px; }
+  header button.back { background: none; border: none; color: #fff; font-size: 20px; }
+  header .title { font-weight: 700; font-size: 16px; }
+
+  main { padding: 16px; }
+  .empty { text-align: center; color: #888; margin-top: 60px; font-size: 14px; }
+
+  .listing-photo { width: 100%; border-radius: 14px; margin-bottom: 14px; background: #eee; display: block; }
+  .listing-photo-placeholder { width: 100%; aspect-ratio: 4/3; border-radius: 14px; margin-bottom: 14px; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #bbb; }
+
+  .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .title { font-size: 17px; font-weight: 700; color: #222; margin-bottom: 6px; }
+  .price { font-size: 18px; font-weight: 800; color: #1a73e8; margin-bottom: 8px; }
+  .loc { font-size: 13px; color: #888; margin-bottom: 10px; }
+  .desc { font-size: 14px; color: #444; line-height: 1.8; white-space: pre-wrap; }
+  .sold-badge { display: inline-block; background: #fce8e6; color: #c5221f; font-size: 12px; padding: 4px 10px; border-radius: 10px; font-weight: 700; margin-bottom: 8px; }
+
+  .warning { background: #fff3e0; color: #b25c00; border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.8; margin-bottom: 14px; }
+
+  .call-btn { display: block; text-align: center; width: 100%; padding: 14px; border-radius: 12px; background: #1a9c4b; color: #fff; font-weight: 700; font-size: 14px; text-decoration: none; margin-bottom: 10px; }
+
+  .owner-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .owner-actions button { flex: 1; padding: 11px; border-radius: 10px; font-size: 13px; font-weight: 700; border: none; }
+  .btn-sold { background: #1a1a2e; color: #fff; }
+  .btn-remove { background: #fff; color: #c5221f; border: 1px solid #c5221f; }
+
+  #loading-screen { position: fixed; inset: 0; background: #f4f6f8; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; z-index: 999; }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">در حال بارگذاری...</div>
+
+<header>
+  <button class="back" onclick="location.href='/fixconnect/customer/marketplace.html'">›</button>
+  <div class="title">جزئیات آگهی</div>
+</header>
+
+<main id="main-content"></main>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { requireRole } from "../shared/auth.js";
+  import { esc } from "../shared/utils.js";
+
+  const profile = await requireRole(["customer", "professional"], "/fixconnect/index.html");
+  if (!profile) throw new Error("not authorized");
+
+  const params = new URLSearchParams(location.search);
+  const listingId = params.get("id");
+  const main = document.getElementById("main-content");
+
+  if (!listingId) {
+    document.getElementById("loading-screen").style.display = "none";
+    main.innerHTML = `<div class="empty">آگهی نامعتبر</div>`;
+    throw new Error("missing id");
+  }
+
+  const { data: listing, error } = await supabase
+    .from("marketplace_listings")
+    .select("id, title, description, price, city, area, photo_path, status, seller_id")
+    .eq("id", listingId)
+    .single();
+
+  document.getElementById("loading-screen").style.display = "none";
+
+  if (error || !listing) {
+    main.innerHTML = `<div class="empty">آگهی پیدا نشد یا حذف شده</div>`;
+    throw new Error("not found");
+  }
+
+  const { data: seller } = await supabase
+    .from("profiles")
+    .select("full_name, phone")
+    .eq("id", listing.seller_id)
+    .maybeSingle();
+
+  const photoUrl = listing.photo_path
+    ? supabase.storage.from("marketplace-media").getPublicUrl(listing.photo_path).data.publicUrl
+    : null;
+  const priceText = listing.price ? `${Number(listing.price).toLocaleString("fa-IR")} تومان` : "توافقی";
+  const isOwner = listing.seller_id === profile.id;
+
+  main.innerHTML = `
+    ${photoUrl ? `<img class="listing-photo" src="${photoUrl}" />` : `<div class="listing-photo-placeholder">📷</div>`}
+
+    <div class="card">
+      ${listing.status === "sold" ? `<div class="sold-badge">فروخته شد</div>` : ""}
+      <div class="title">${esc(listing.title)}</div>
+      <div class="price">${esc(priceText)}</div>
+      <div class="loc">📍 ${esc(listing.city || "—")}${listing.area ? " - " + esc(listing.area) : ""} · فروشنده: ${esc(seller?.full_name || "—")}</div>
+      ${listing.description ? `<div class="desc">${esc(listing.description)}</div>` : ""}
+    </div>
+
+    <div class="warning">⚠️ قبل از پرداخت، حتماً کالا رو حضوری ببین و بررسی کن. هیچ‌وقت پول رو پیش از تحویل گرفتن کالا واریز نکن — کلاهبرداری در معاملات آنلاین رایجه.</div>
+
+    ${!isOwner && listing.status === "active" && seller?.phone ? `<a class="call-btn" href="tel:${esc(seller.phone)}">📞 تماس با فروشنده</a>` : ""}
+
+    ${isOwner ? `
+      <div class="card">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">این آگهی مال توئه</div>
+        <div class="owner-actions">
+          ${listing.status === "active" ? `<button class="btn-sold" id="mark-sold-btn">فروخته شد</button>` : ""}
+          <button class="btn-remove" id="remove-btn">حذف آگهی</button>
+        </div>
+      </div>
+    ` : ""}
+  `;
+
+  const markSoldBtn = document.getElementById("mark-sold-btn");
+  if (markSoldBtn) {
+    markSoldBtn.addEventListener("click", async () => {
+      await supabase.from("marketplace_listings").update({ status: "sold" }).eq("id", listing.id);
+      location.reload();
+    });
+  }
+
+  document.getElementById("remove-btn")?.addEventListener("click", async () => {
+    if (!confirm("این آگهی حذف بشه؟")) return;
+    await supabase.from("marketplace_listings").update({ status: "removed" }).eq("id", listing.id);
+    window.location.href = "/fixconnect/customer/marketplace.html";
+  });
+</script>
+
+</body>
+</html>
