@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>FixConnect — ثبت آگهی</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Tahoma, sans-serif; background: #f4f6f8; padding-bottom: 30px; }
+  header { background: #1a73e8; color: #fff; padding: 16px 18px; display: flex; align-items: center; gap: 10px; }
+  header button.back { background: none; border: none; color: #fff; font-size: 20px; }
+  header .title { font-weight: 700; font-size: 16px; }
+
+  main { padding: 18px; }
+  .warning { background: #fff3e0; color: #b25c00; border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.8; margin-bottom: 16px; }
+
+  .section { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; margin-top: 10px; }
+  input, textarea { width: 100%; padding: 11px 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; font-family: inherit; background: #fafafa; }
+  input:focus, textarea:focus { outline: none; border-color: #1a73e8; background: #fff; }
+  textarea { min-height: 80px; resize: vertical; }
+
+  .price-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .price-row label { margin: 0; font-size: 12px; color: #555; }
+
+  .capture-btn { width: 100%; padding: 14px; border: 2px dashed #bbb; border-radius: 12px; background: #fafafa; color: #555; font-size: 14px; cursor: pointer; margin-top: 10px; }
+  .preview-img { width: 100%; border-radius: 12px; margin-top: 10px; }
+
+  .submit-btn { width: 100%; padding: 15px; border: none; border-radius: 14px; background: #1a9c4b; color: #fff; font-size: 16px; font-weight: 700; margin-top: 6px; }
+  .submit-btn:disabled { background: #a9c5f0; }
+
+  #overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: none; align-items: center; justify-content: center; z-index: 999; font-size: 14px; color: #666; }
+</style>
+</head>
+<body>
+
+<div id="overlay">در حال ثبت آگهی...</div>
+
+<header>
+  <button class="back" onclick="history.back()">›</button>
+  <div class="title">ثبت آگهی فروش</div>
+</header>
+
+<main>
+  <div class="warning">⚠️ برای امنیت خودت و خریدار، شماره‌ات فقط برای هماهنگی تماس در دسترسه — پول رو هیچ‌وقت قبل از دیدن حضوری کالا واریز نکن یا نگیر.</div>
+
+  <div class="section">
+    <label>عکس کالا</label>
+    <input type="file" accept="image/*" capture="environment" id="photo-input" style="display:none" />
+    <button class="capture-btn" id="photo-btn">برای گرفتن یا انتخاب عکس بزن</button>
+    <img id="photo-preview" class="preview-img" style="display:none" />
+
+    <label>عنوان آگهی</label>
+    <input id="title-input" placeholder="مثلاً: یخچال آرچلیک سالم، فقط کمپرسور خراب" required />
+
+    <label>توضیحات</label>
+    <textarea id="desc-input" placeholder="وضعیت کالا، سن، دلیل فروش و ..."></textarea>
+
+    <label>قیمت (تومان)</label>
+    <div class="price-row">
+      <input id="price-input" type="number" placeholder="مثلاً: 2000000" style="flex:1" />
+    </div>
+    <div class="price-row">
+      <input type="checkbox" id="negotiable-check" />
+      <label for="negotiable-check" style="margin-top:0">قیمت توافقی (بدون عدد مشخص)</label>
+    </div>
+
+    <label>شهر</label>
+    <input id="city-input" />
+    <label>محله / منطقه</label>
+    <input id="area-input" />
+  </div>
+
+  <button class="submit-btn" id="submit-btn">ثبت آگهی</button>
+</main>
+
+<script type="module">
+  import { supabase } from "../shared/supabase-client.js";
+  import { requireRole } from "../shared/auth.js";
+
+  const profile = await requireRole(["customer", "professional"], "/fixconnect/index.html");
+  if (!profile) throw new Error("not authorized");
+
+  const params = new URLSearchParams(location.search);
+  const deviceNote = params.get("device_note");
+  if (deviceNote) document.getElementById("title-input").value = deviceNote;
+
+  document.getElementById("city-input").value = profile.city || "";
+  document.getElementById("area-input").value = profile.area || "";
+
+  let photoFile = null;
+  document.getElementById("photo-btn").addEventListener("click", () => document.getElementById("photo-input").click());
+  document.getElementById("photo-input").addEventListener("change", (e) => {
+    photoFile = e.target.files[0];
+    if (!photoFile) return;
+    const img = document.getElementById("photo-preview");
+    img.src = URL.createObjectURL(photoFile);
+    img.style.display = "block";
+  });
+
+  document.getElementById("negotiable-check").addEventListener("change", (e) => {
+    const priceInput = document.getElementById("price-input");
+    priceInput.disabled = e.target.checked;
+    if (e.target.checked) priceInput.value = "";
+  });
+
+  document.getElementById("submit-btn").addEventListener("click", async () => {
+    const title = document.getElementById("title-input").value.trim();
+    if (!title) { alert("عنوان آگهی رو بنویس"); return; }
+    const description = document.getElementById("desc-input").value.trim();
+    const negotiable = document.getElementById("negotiable-check").checked;
+    const priceVal = document.getElementById("price-input").value.trim();
+    const city = document.getElementById("city-input").value.trim();
+    const area = document.getElementById("area-input").value.trim();
+
+    const submitBtn = document.getElementById("submit-btn");
+    submitBtn.disabled = true;
+    document.getElementById("overlay").style.display = "flex";
+
+    try {
+      let photoPath = null;
+      if (photoFile) {
+        photoPath = `${profile.id}/${Date.now()}-${photoFile.name}`;
+        const { error: upErr } = await supabase.storage.from("marketplace-media").upload(photoPath, photoFile);
+        if (upErr) throw new Error("خطا در آپلود عکس: " + upErr.message);
+      }
+
+      const { error } = await supabase.from("marketplace_listings").insert({
+        seller_id: profile.id,
+        title,
+        description: description || null,
+        price: negotiable ? null : (priceVal ? Number(priceVal) : null),
+        city: city || null,
+        area: area || null,
+        photo_path: photoPath,
+      });
+
+      if (error) throw new Error("خطا در ثبت آگهی: " + error.message);
+
+      window.location.href = "/fixconnect/customer/marketplace.html";
+    } catch (err) {
+      alert(err.message || "خطایی رخ داد");
+      submitBtn.disabled = false;
+      document.getElementById("overlay").style.display = "none";
+    }
+  });
+</script>
+
+</body>
+</html>
