@@ -25,6 +25,7 @@
 
   .device-actions { display: flex; gap: 8px; margin-top: 10px; }
   .device-actions a { flex: 1; text-align: center; padding: 9px; border-radius: 10px; background: #1a73e8; color: #fff; font-size: 12px; font-weight: 600; text-decoration: none; }
+  .device-actions a.sell-link { background: #1a9c4b; }
 
   .add-form { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: none; }
   .add-form.open { display: block; }
@@ -158,6 +159,7 @@
         ${d.notes ? `<div class="device-notes">${esc(d.notes)}</div>` : ""}
         <div class="device-actions">
           <a href="/fixconnect/customer/new-request.html?device_note=${encodeURIComponent(d.name + (meta ? " — " + meta : ""))}">🔍 ثبت درخواست تعمیر</a>
+          <a class="sell-link" href="/fixconnect/customer/marketplace-new.html?device_note=${encodeURIComponent(d.name + (meta ? " — " + meta : ""))}">🏷 فروختنش</a>
         </div>
       `;
       card.querySelector(".del-btn").addEventListener("click", async () => {
