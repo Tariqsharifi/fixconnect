@@ -104,17 +104,45 @@
     <div class="warning">⚠️ قبل از پرداخت، حتماً کالا رو حضوری ببین و بررسی کن. هیچ‌وقت پول رو پیش از تحویل گرفتن کالا واریز نکن — کلاهبرداری در معاملات آنلاین رایجه.</div>
 
     ${!isOwner && listing.status === "active" && seller?.phone ? `<a class="call-btn" href="tel:${esc(seller.phone)}">📞 تماس با فروشنده</a>` : ""}
+    ${!isOwner && listing.status === "active" ? `<a class="call-btn" style="background:#1a73e8" href="/fixconnect/customer/marketplace-chat.html?listing=${listing.id}">💬 چت با فروشنده</a>` : ""}
 
     ${isOwner ? `
       <div class="card">
         <div style="font-size:13px;font-weight:700;margin-bottom:8px">این آگهی مال توئه</div>
         <div class="owner-actions">
+          <a href="/fixconnect/customer/marketplace-new.html?edit=${listing.id}" style="flex:1;text-align:center;padding:11px;border-radius:10px;font-size:13px;font-weight:700;background:#1a73e8;color:#fff;text-decoration:none">ویرایش</a>
           ${listing.status === "active" ? `<button class="btn-sold" id="mark-sold-btn">فروخته شد</button>` : ""}
           <button class="btn-remove" id="remove-btn">حذف آگهی</button>
         </div>
       </div>
+      <div class="card" id="inbox-container">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">پیام‌های دریافتی</div>
+        <div id="inbox-list" style="font-size:13px;color:#888">در حال بارگذاری...</div>
+      </div>
     ` : ""}
   `;
+
+  if (isOwner) {
+    const { data: conversations } = await supabase
+      .from("marketplace_conversations")
+      .select("id, buyer_id, created_at")
+      .eq("listing_id", listing.id)
+      .order("created_at", { ascending: false });
+
+    const inboxList = document.getElementById("inbox-list");
+    if (!conversations || conversations.length === 0) {
+      inboxList.textContent = "هنوز کسی پیام نداده";
+    } else {
+      const buyerIds = conversations.map((c) => c.buyer_id);
+      const { data: buyers } = await supabase.from("profiles").select("id, full_name").in("id", buyerIds);
+      const buyerById = Object.fromEntries((buyers ?? []).map((b) => [b.id, b]));
+      inboxList.innerHTML = conversations
+        .map(
+          (c) => `<a href="/fixconnect/customer/marketplace-chat.html?conversation=${c.id}" style="display:block;padding:9px 0;border-bottom:1px solid #f0f0f0;color:#1a73e8;text-decoration:none;font-size:13px">💬 ${esc(buyerById[c.buyer_id]?.full_name || "خریدار")}</a>`
+        )
+        .join("");
+    }
+  }
 
   const markSoldBtn = document.getElementById("mark-sold-btn");
   if (markSoldBtn) {
