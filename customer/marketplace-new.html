@@ -65,6 +65,9 @@
       <label for="negotiable-check" style="margin-top:0">قیمت توافقی (بدون عدد مشخص)</label>
     </div>
 
+    <label>شمارهٔ تماس (اجباری)</label>
+    <input id="phone-input" required placeholder="09xxxxxxxxx" />
+
     <label>شهر</label>
     <input id="city-input" />
     <label>محله / منطقه</label>
@@ -83,10 +86,50 @@
 
   const params = new URLSearchParams(location.search);
   const deviceNote = params.get("device_note");
-  if (deviceNote) document.getElementById("title-input").value = deviceNote;
+  const editId = params.get("edit");
+  let existingPhotoPath = null;
 
+  document.getElementById("phone-input").value = profile.phone || "";
   document.getElementById("city-input").value = profile.city || "";
   document.getElementById("area-input").value = profile.area || "";
+
+  // FEATURE: edit mode — same form, prefilled with the existing
+  // listing's data, updating instead of inserting on submit.
+  if (editId) {
+    document.title = "FixConnect — ویرایش آگهی";
+    const { data: listing, error: loadErr } = await supabase
+      .from("marketplace_listings")
+      .select("title, description, price, city, area, photo_path, seller_id")
+      .eq("id", editId)
+      .single();
+
+    if (loadErr || !listing || listing.seller_id !== profile.id) {
+      alert("این آگهی پیدا نشد یا مال تو نیست");
+      window.location.href = "/fixconnect/customer/marketplace.html";
+      throw new Error("cannot edit");
+    }
+
+    document.getElementById("title-input").value = listing.title || "";
+    document.getElementById("desc-input").value = listing.description || "";
+    document.getElementById("city-input").value = listing.city || "";
+    document.getElementById("area-input").value = listing.area || "";
+    if (listing.price) {
+      document.getElementById("price-input").value = listing.price;
+    } else {
+      document.getElementById("negotiable-check").checked = true;
+      document.getElementById("price-input").disabled = true;
+    }
+    existingPhotoPath = listing.photo_path;
+    if (existingPhotoPath) {
+      const url = supabase.storage.from("marketplace-media").getPublicUrl(existingPhotoPath).data.publicUrl;
+      const img = document.getElementById("photo-preview");
+      img.src = url;
+      img.style.display = "block";
+    }
+    document.getElementById("submit-btn").textContent = "ذخیرهٔ تغییرات";
+  } else if (deviceNote) {
+    document.getElementById("title-input").value = deviceNote;
+  }
 
   let photoFile = null;
   document.getElementById("photo-btn").addEventListener("click", () => document.getElementById("photo-input").click());
@@ -107,6 +150,8 @@
   document.getElementById("submit-btn").addEventListener("click", async () => {
     const title = document.getElementById("title-input").value.trim();
     if (!title) { alert("عنوان آگهی رو بنویس"); return; }
+    const phone = document.getElementById("phone-input").value.trim();
+    if (!phone) { alert("شمارهٔ تماس اجباریه — خریدارها از همین طریق باهات تماس می‌گیرن"); return; }
     const description = document.getElementById("desc-input").value.trim();
     const negotiable = document.getElementById("negotiable-check").checked;
     const priceVal = document.getElementById("price-input").value.trim();
@@ -118,26 +163,38 @@
     document.getElementById("overlay").style.display = "flex";
 
     try {
-      let photoPath = null;
+      // Phone lives on profiles (shared with the rest of the app), so
+      // saving it here keeps the "تماس با فروشنده" button on the
+      // listing page (which reads profiles.phone) working correctly.
+      if (phone !== (profile.phone || "")) {
+        await supabase.from("profiles").update({ phone }).eq("id", profile.id);
+      }
+
+      let photoPath = existingPhotoPath;
       if (photoFile) {
         photoPath = `${profile.id}/${Date.now()}-${photoFile.name}`;
         const { error: upErr } = await supabase.storage.from("marketplace-media").upload(photoPath, photoFile);
         if (upErr) throw new Error("خطا در آپلود عکس: " + upErr.message);
       }
 
-      const { error } = await supabase.from("marketplace_listings").insert({
-        seller_id: profile.id,
+      const payload = {
         title,
         description: description || null,
         price: negotiable ? null : (priceVal ? Number(priceVal) : null),
         city: city || null,
         area: area || null,
         photo_path: photoPath,
-      });
+      };
+
+      const { error } = editId
+        ? await supabase.from("marketplace_listings").update(payload).eq("id", editId)
+        : await supabase.from("marketplace_listings").insert({ ...payload, seller_id: profile.id });
 
       if (error) throw new Error("خطا در ثبت آگهی: " + error.message);
 
-      window.location.href = "/fixconnect/customer/marketplace.html";
+      window.location.href = editId
+        ? `/fixconnect/customer/marketplace-detail.html?id=${editId}`
+        : "/fixconnect/customer/marketplace.html";
     } catch (err) {
       alert(err.message || "خطایی رخ داد");
       submitBtn.disabled = false;
